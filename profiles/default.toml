@@ -1,0 +1,14 @@
+# Profil par défaut — sobre, mono-écran, sans rien fermer.
+[layout]
+screen_1 = ["terminal", "chrome:tabs=[gmail,calendar]"]
+
+[apps]
+launch = []
+kill = []
+
+[briefing]
+voice = false
+include = ["mails_urgents", "calendrier"]
+
+[focus]
+do_not_disturb = false

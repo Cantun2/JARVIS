@@ -1,0 +1,22 @@
+# Packaging différé, cf docs/MANUAL_SETUP.md.
+# webkit2gtk est ABSENT sur la machine de dev : ne pas compiler ici.
+# Ce manifeste scaffolde la crate Tauri ; le build natif se fait ailleurs.
+[package]
+name = "jarvis-suit"
+version = "0.1.0"
+description = "JARVIS Mission Control — shell natif Tauri"
+authors = ["jarvis-suit"]
+edition = "2021"
+rust-version = "1.77.2"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[features]
+# Feature par défaut utilisée par la CLI Tauri pour le build de prod.
+custom-protocol = ["tauri/custom-protocol"]

@@ -1,0 +1,7 @@
+{
+  "uuid": "jarvis-desktop@jarvis-suit.local",
+  "name": "JARVIS Desktop",
+  "description": "Placement de fenêtres pour jarvis-suit",
+  "shell-version": ["46"],
+  "url": ""
+}

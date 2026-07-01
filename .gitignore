@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+build/
+dist/
+
+# Environnement / secrets — JAMAIS committer
+.env
+.env.local
+*.key
+*.pem
+secrets/
+
+# Données locales runtime
+*.db
+*.db-wal
+*.db-shm
+data/
+var/
+
+# Node / UI
+ui/node_modules/
+ui/dist/
+ui/.vite/
+
+# Tauri (build Rust)
+ui/src-tauri/target/
+
+# OS
+.DS_Store

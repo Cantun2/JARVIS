@@ -1,0 +1,16 @@
+# Profil "deep work" — concentration maximale (exemple de la spec).
+[layout]
+screen_1 = ["vscode:~/projets/projet-actif", "terminal"]
+screen_2 = ["chrome:profile=perso:tabs=[calendar,gmail]", "obsidian"]
+screen_3 = ["chrome:profile=perso:tabs=[github]"]
+
+[apps]
+launch = ["spotify:playlist=focus"]
+kill = ["discord", "steam"]
+
+[briefing]
+voice = true
+include = ["mails_urgents", "calendrier", "night_report", "meteo"]
+
+[focus]
+do_not_disturb = true

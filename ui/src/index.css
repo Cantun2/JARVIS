@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-hud-bg text-hud-text font-mono antialiased;
+    margin: 0;
+    /* Léger halo radial pour la profondeur "salle de contrôle". */
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(34, 211, 238, 0.06), transparent 40%),
+      radial-gradient(circle at 85% 100%, rgba(245, 158, 11, 0.05), transparent 40%);
+    background-attachment: fixed;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-hud-border rounded;
+  }
+}
+
+@layer components {
+  /* Panneau glassmorphism léger, réutilisable. */
+  .hud-panel {
+    @apply rounded-xl border border-hud-border bg-hud-panel/70 backdrop-blur-sm;
+  }
+
+  .hud-label {
+    @apply text-[10px] uppercase tracking-[0.2em] text-hud-muted;
+  }
+}
