@@ -120,9 +120,7 @@ class SQLiteJournal:
         """Relit les événements de `seq > since_seq`, dans l'ordre."""
         return [
             event
-            for _seq, event in self.replay_with_seq(
-                since_seq=since_seq, types=types, limit=limit
-            )
+            for _seq, event in self.replay_with_seq(since_seq=since_seq, types=types, limit=limit)
         ]
 
     def latest_seq(self) -> int:
@@ -132,9 +130,7 @@ class SQLiteJournal:
 
     def seq_of(self, event_id: str) -> int | None:
         with self._lock:
-            row = self._conn.execute(
-                "SELECT seq FROM events WHERE id = ?", (event_id,)
-            ).fetchone()
+            row = self._conn.execute("SELECT seq FROM events WHERE id = ?", (event_id,)).fetchone()
         return int(row["seq"]) if row else None
 
     @staticmethod

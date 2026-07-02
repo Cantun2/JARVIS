@@ -126,18 +126,12 @@ class GmailMailSource:
 
     def _fetch_sync(self, service: Any, limit: int) -> list[Mail]:
         listing = (
-            service.users()
-            .messages()
-            .list(userId="me", q=self._query, maxResults=limit)
-            .execute()
+            service.users().messages().list(userId="me", q=self._query, maxResults=limit).execute()
         )
         mails: list[Mail] = []
         for ref in listing.get("messages", [])[:limit]:
             full = (
-                service.users()
-                .messages()
-                .get(userId="me", id=ref["id"], format="full")
-                .execute()
+                service.users().messages().get(userId="me", id=ref["id"], format="full").execute()
             )
             mails.append(parse_gmail_message(full))
         return mails

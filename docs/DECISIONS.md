@@ -73,6 +73,26 @@ CPU lent.
 **Conséquences.** Chemin réel simple et local : `ollama pull <modèle>` + une variable d'env. Pas de Rust, pas
 de cloud, pas de coût.
 
+## ADR-10 — État des tâches dans un store dédié (projection), journal = trace
+**Contexte.** Le Night Shift a besoin d'un **état mutable** (backlog → in_progress → review → done /
+blocked / failed), incompatible avec le journal append-only.
+**Décision.** Nouveau `night/store.py::TaskStore` (SQLite, tables `projects`/`tasks`/`night_reports`), sur
+le moule de `SQLiteJournal`. C'est la **projection** de l'état courant ; chaque transition émet aussi un
+événement (`task.transitioned`, `backlog.ready`, `night.report_ready`) sur le bus → le journal reste la
+trace rejouable (ADR-4). Le store est injecté via `AgentContext.tasks` (service **non gaté** par permission,
+comme `emit`/`trigger`).
+**Conséquences.** UI Mission Control alimentée par le store (état) + le flux d'événements (live).
+
+## ADR-11 — Night Shift en simulation dry-run ; VULCAN jamais armé
+**Contexte.** Phase 3 « La nuit » sans exécuter de code (VULCAN déprioritisé et dangereux).
+**Décision.** `night/manager.py::NightShiftManager` est un **service dry-run** (pas un agent, sans
+`SHELL_SANDBOXED`/`FS_PROJECT_DIRS`) : il fait progresser les tâches avec rapports/diffs **factices**
+(`dry_run=True`), respecte `max_usd_night`/`max_tasks_night`, et n'invoque **aucun** process (test garde-fou
+qui monkeypatche `subprocess`/`os.system`/`create_subprocess_exec`). DAEDALUS (planner) n'a que
+`NET_CLOUD_INFERENCE`. VULCAN reste `enabled=False`.
+**Conséquences.** Toute la structure (backlog, cycle de vie, Night Report, Mission Control) est prête ;
+VULCAN réel (worktrees + `claude -p`) la pilotera plus tard, après armement manuel explicite.
+
 ## ADR-7 — VULCAN livré désarmé
 **Contexte.** Le Night Shift est le module le plus puissant et le plus dangereux.
 **Décision.** VULCAN est livré `enabled=False`. L'`AgentRunner` refuse tout agent désarmé (`AgentDisarmed`) ;

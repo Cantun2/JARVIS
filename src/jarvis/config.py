@@ -57,6 +57,11 @@ class Settings(BaseSettings):
     # Desktop
     desktop_backend: DesktopBackend = Field(default="mock", alias="JARVIS_DESKTOP_BACKEND")
 
+    # Night Shift (VULCAN désarmé : simulation dry-run uniquement)
+    night_shift_enabled: bool = Field(default=False, alias="JARVIS_NIGHT_SHIFT_ENABLED")
+    max_usd_night: float = Field(default=5.0, alias="JARVIS_MAX_USD_NIGHT")
+    max_tasks_night: int = Field(default=6, alias="JARVIS_MAX_TASKS_NIGHT")
+
     @property
     def is_mock(self) -> bool:
         return self.mode == "mock"

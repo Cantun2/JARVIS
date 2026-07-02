@@ -12,9 +12,14 @@ from jarvis.api.schemas import (
     InboxDTO,
     InboxItemDTO,
     LastRunDTO,
+    NightReportDTO,
+    NightTaskDTO,
+    ProjectDTO,
+    TaskDTO,
 )
 from jarvis.assembly import JarvisContext
 from jarvis.core.events import EventType
+from jarvis.night.models import NightReport, Project, Task
 
 
 def agent_dtos(ctx: JarvisContext) -> list[AgentDTO]:
@@ -91,3 +96,57 @@ def latest_briefing_dto(ctx: JarvisContext) -> BriefingDTO | None:
         text=str(payload.get("text", "")),
         sections=dict(payload.get("sections", {})),
     )
+
+
+def project_dto(ctx: JarvisContext, project: Project) -> ProjectDTO:
+    return ProjectDTO(
+        id=project.id,
+        name=project.name,
+        goal=project.goal,
+        created_ts=project.created_ts,
+        task_counts=ctx.tasks.task_counts(project.id),
+    )
+
+
+def project_dtos(ctx: JarvisContext) -> list[ProjectDTO]:
+    return [project_dto(ctx, p) for p in ctx.tasks.list_projects()]
+
+
+def task_dto(task: Task) -> TaskDTO:
+    return TaskDTO(
+        id=task.id,
+        project_id=task.project_id,
+        title=task.title,
+        description=task.description,
+        acceptance_criteria=list(task.acceptance_criteria),
+        status=task.status.value,
+        report=task.report,
+        diff=task.diff,
+        blocker=task.blocker,
+        updated_ts=task.updated_ts,
+    )
+
+
+def task_dtos(ctx: JarvisContext, project_id: str) -> list[TaskDTO]:
+    return [task_dto(t) for t in ctx.tasks.list_tasks(project_id)]
+
+
+def night_report_dto(report: NightReport) -> NightReportDTO:
+    return NightReportDTO(
+        date=report.date,
+        done=report.done,
+        blocked=report.blocked,
+        failed=report.failed,
+        cost_usd=report.cost_usd,
+        dry_run=report.dry_run,
+        tasks=[
+            NightTaskDTO(title=t.title, status=t.status, branch=t.branch, note=t.note)
+            for t in report.tasks
+        ],
+        blockers=list(report.blockers),
+    )
+
+
+def latest_night_report_dto(ctx: JarvisContext) -> NightReportDTO | None:
+    report = ctx.tasks.latest_night_report()
+    return night_report_dto(report) if report is not None else None

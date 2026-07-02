@@ -20,6 +20,7 @@ if TYPE_CHECKING:  # imports uniquement pour le typage — pas de couplage runti
     from jarvis.inference.gateway import InferenceGateway
     from jarvis.io.mail import MailSource
     from jarvis.io.telegram import TelegramNotifier
+    from jarvis.night.store import TaskStore
 
 EmitFn = Callable[[EventType, dict[str, Any]], Awaitable[int]]
 TriggerFn = Callable[[str, AgentInput], Awaitable[AgentOutput]]
@@ -59,6 +60,7 @@ class AgentContext:
     desktop: DesktopController | None = None
     telegram: TelegramNotifier | None = None
     mail: MailSource | None = None
+    tasks: TaskStore | None = None  # service d'état (non gaté par permission)
     trigger_fn: TriggerFn | None = None
 
     async def emit(self, type: EventType, **payload: Any) -> int:
@@ -84,6 +86,11 @@ class AgentContext:
         if self.mail is None:
             raise PermissionDenied(f"{self.agent_name}: MAIL_READ non accordée")
         return self.mail
+
+    def require_tasks(self) -> TaskStore:
+        if self.tasks is None:
+            raise RuntimeError(f"{self.agent_name}: store de tâches indisponible")
+        return self.tasks
 
     async def trigger(self, name: str, data: AgentInput) -> AgentOutput:
         """Déclenche un autre agent (ex. ATLAS → HERMES) via l'orchestrateur."""

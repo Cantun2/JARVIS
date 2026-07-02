@@ -42,6 +42,7 @@ class AgentRunner:
         desktop: Any | None = None,
         telegram: Any | None = None,
         mail: Any | None = None,
+        tasks: Any | None = None,
     ) -> None:
         self.bus = bus
         self.enforcer = enforcer
@@ -50,6 +51,7 @@ class AgentRunner:
         self.desktop = desktop
         self.telegram = telegram
         self.mail = mail
+        self.tasks = tasks
 
     async def run_by_name(self, name: str, data: AgentInput) -> AgentOutput:
         return await self.run(self.registry.get(name), data)
@@ -95,6 +97,7 @@ class AgentRunner:
             desktop=self.desktop if granted & _DESKTOP_PERMS else None,
             telegram=self.telegram if Permission.NOTIFY_TELEGRAM in granted else None,
             mail=self.mail if Permission.MAIL_READ in granted else None,
+            tasks=self.tasks,
             trigger_fn=self.run_by_name,
         )
 

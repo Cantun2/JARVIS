@@ -4,9 +4,14 @@
 // vers VITE_API_BASE. En build/prod (ou hors proxy), on préfixe par API_BASE.
 import type {
   Agent,
+  CreateProjectResponse,
   EventsResponse,
   Health,
+  NightReport,
+  Project,
   RunAgentResponse,
+  Task,
+  TaskAction,
 } from "./types";
 
 /**
@@ -69,4 +74,52 @@ export function runAgent(
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+// --- Mission Control ---------------------------------------------------------
+
+/** GET /api/projects */
+export function getProjects(): Promise<Project[]> {
+  return getJson<Project[]>("/api/projects");
+}
+
+/** POST /api/projects — génère un backlog pour un objectif. */
+export function createProject(
+  goal: string,
+  name?: string,
+): Promise<CreateProjectResponse> {
+  const body = name === undefined ? { goal } : { goal, name };
+  return getJson<CreateProjectResponse>("/api/projects", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+/** GET /api/projects/{id}/tasks */
+export function getProjectTasks(projectId: string): Promise<Task[]> {
+  return getJson<Task[]>(`/api/projects/${encodeURIComponent(projectId)}/tasks`);
+}
+
+/** POST /api/tasks/{id}/transition */
+export function transitionTask(taskId: string, action: TaskAction): Promise<Task> {
+  return getJson<Task>(`/api/tasks/${encodeURIComponent(taskId)}/transition`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ action }),
+  });
+}
+
+/** POST /api/night/run — lance la nuit (dry-run côté backend). */
+export function runNight(projectId: string): Promise<NightReport> {
+  return getJson<NightReport>("/api/night/run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ project_id: projectId }),
+  });
+}
+
+/** GET /api/night/report — dernier rapport de nuit ou null. */
+export function getNightReport(): Promise<NightReport | null> {
+  return getJson<NightReport | null>("/api/night/report");
 }

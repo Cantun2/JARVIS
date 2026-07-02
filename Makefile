@@ -5,7 +5,7 @@ SHELL := /bin/bash
 PY := $(shell [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3)
 PIP := $(PY) -m pip
 
-.PHONY: help install check fmt lint type test test-py test-ui demo demo-phase1 doctor serve ui-dev clean
+.PHONY: help install check fmt lint type test test-py test-ui demo demo-phase1 demo-phase3 doctor serve ui-dev clean
 
 help: ## Affiche cette aide
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -39,6 +39,9 @@ check: lint type test ## Filet de sécurité complet : lint + types + tests
 
 demo-phase1: ## Joue la séquence de réveil ATLAS en mock (aucun credential)
 	$(PY) scripts/demo_phase1.py
+
+demo-phase3: ## Joue la nuit (DAEDALUS + simulation dry-run) en mock
+	$(PY) scripts/demo_phase3.py
 
 demo: demo-phase1 ## Alias de demo-phase1
 

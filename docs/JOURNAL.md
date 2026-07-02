@@ -1,5 +1,34 @@
 # JOURNAL de bord
 
+## Session 3 — 2026-07-02 — Phase 3 : La nuit (DAEDALUS + Mission Control, dry-run)
+
+**Objectif.** Workflow nocturne sans armer VULCAN : DAEDALUS (objectif→backlog), Night Report structuré,
+écran Mission Control. Décision : simulateur dry-run « vivant » + objectif libre/projet d'exemple.
+
+**Fait.**
+- **Domaine + store** : `night/models.py` (`Project`, `Task`, `TaskStatus`, `TaskDraft`, `NightReport`
+  canonique) et `night/store.py` (`TaskStore` SQLite : projets/tâches/transitions/night_reports). Câblé
+  dans `assembly.py` + `AgentContext.tasks` (service non gaté) + `AgentRunner`.
+- **DAEDALUS** (`agents/daedalus.py`) : décomposition déterministe (5 tâches + critères) + enrichissement
+  best-effort via gateway ; persiste le backlog ; émet `backlog.ready`. Enregistré dans `default_agents()`.
+- **NightShiftManager** (`night/manager.py`) : simulation **dry-run** (rapports/diffs factices, budgets
+  `max_usd_night`/`max_tasks_night`), émet `task.transitioned` + `night.report_ready`. **Zéro exécution**
+  (test garde-fou). VULCAN reste `enabled=False`.
+- **API** : `routes_projects.py` (POST /api/projects → DAEDALUS, GET projects/tasks, POST
+  /api/tasks/{id}/transition, POST /api/night/run, GET /api/night/report) + DTO + vues + include_router.
+- **ORACLE** lit désormais `ctx.tasks.latest_night_report()` (repli mock) → le briefing reflète la nuit.
+- **UI Mission Control** : onglet kanban (Backlog/In Progress/Review/Done + Blocked), Approve/Reject/Retry,
+  Night Report (badge DRY-RUN), boutons « Générer un backlog » / « Lancer la nuit ».
+- **Config** budgets nuit + `.env.example`. `make demo-phase3`. Docs ADR-10/11.
+
+**Validation.** `make check` vert (ruff, mypy strict, pytest, vitest 51). `make demo-phase3` cohérent.
+Garde-fou testé : la nuit dry-run n'invoque aucun `subprocess`/`os.system`.
+
+**Décisions.** ADR-10 (store = projection + events), ADR-11 (night shift dry-run, VULCAN jamais armé).
+
+**Prochaine étape.** Brancher le réel (Ollama/Gmail) et/ou Phase 4 (ECHO voix, HERMES v2), ou armement
+progressif de VULCAN (worktrees + `claude -p`) sous garde-fous SENTINEL.
+
 ## Session 2 — 2026-07-02 — Phase 2 : le réveil branché au réel
 
 **Objectif.** Rendre HERMES/ORACLE réels tout en gardant le mock par défaut (spec §Phase 2, items 8-9).

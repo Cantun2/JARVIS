@@ -14,6 +14,17 @@ vi.mock("../lib/ws", () => ({
   }),
 }));
 
+// Mission Control appelle l'API au montage : on la neutralise pour tester la nav.
+vi.mock("../lib/api", () => ({
+  getProjects: vi.fn().mockResolvedValue([]),
+  getProjectTasks: vi.fn().mockResolvedValue([]),
+  getNightReport: vi.fn().mockResolvedValue(null),
+  transitionTask: vi.fn(),
+  runNight: vi.fn(),
+  createProject: vi.fn(),
+  runAgent: vi.fn().mockResolvedValue({ correlation_id: "c", status: "ok", output: {} }),
+}));
+
 describe("App — navigation par onglets", () => {
   it("affiche le Dashboard par défaut", () => {
     render(<App />);
@@ -39,5 +50,14 @@ describe("App — navigation par onglets", () => {
 
     expect(screen.getByTestId("tab-briefing")).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("briefing-panel")).toBeInTheDocument();
+  });
+
+  it("cliquer l'onglet Mission Control affiche le MissionControl", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByTestId("tab-mission"));
+
+    expect(screen.getByTestId("tab-mission")).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("mission-panel")).toBeInTheDocument();
   });
 });
