@@ -29,3 +29,17 @@ async def test_oracle_notifies_telegram(ctx: JarvisContext) -> None:
     assert isinstance(ctx.telegram, MockTelegram)
     assert len(ctx.telegram.sent) == 1
     assert ctx.telegram.sent[0].level == "info"
+
+
+async def test_oracle_uses_stored_night_report(ctx: JarvisContext) -> None:
+    from jarvis.night.manager import NightShiftManager
+    from jarvis.night.models import TaskDraft
+
+    project = ctx.tasks.create_project("P", "objectif")
+    ctx.tasks.add_tasks(project.id, [TaskDraft(title=f"T{i}") for i in range(3)])
+    report = await NightShiftManager(ctx.tasks, ctx.bus, ctx.settings).run_night(project.id)
+
+    out = await ctx.runner.run(Oracle(), OracleInput())
+    assert isinstance(out, OracleOutput)
+    assert out.sections["night_report"]["dry_run"] is True
+    assert f"VULCAN a terminé {report.done}" in out.text

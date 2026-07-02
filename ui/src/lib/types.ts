@@ -14,6 +14,8 @@ export type EventType =
   | "agent.escalated"
   | "briefing.ready"
   | "night.report_ready"
+  | "backlog.ready"
+  | "task.transitioned"
   | "permission.denied"
   | "budget.exceeded"
   | "system.health"
@@ -100,3 +102,59 @@ export interface WsEvent {
 }
 
 export type WsMessage = WsSnapshot | WsEvent;
+
+// --- Mission Control ---------------------------------------------------------
+// Miroir TS du contrat backend (projets / tâches / rapport de nuit).
+
+/** Statut d'une tâche dans le kanban Mission Control. */
+export type TaskStatus =
+  | "backlog"
+  | "in_progress"
+  | "review"
+  | "done"
+  | "blocked"
+  | "failed";
+
+/** Tâche d'un projet (unité de travail agentique). */
+export interface Task {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string;
+  acceptance_criteria: string[];
+  status: TaskStatus;
+  report: string;
+  diff: string;
+  blocker: string | null;
+  updated_ts: string;
+}
+
+/** Projet : objectif + comptage de tâches par statut. */
+export interface Project {
+  id: string;
+  name: string;
+  goal: string;
+  created_ts: string;
+  task_counts: Record<TaskStatus, number>;
+}
+
+/** Rapport de nuit : synthèse d'une exécution nocturne (éventuellement dry-run). */
+export interface NightReport {
+  date: string;
+  done: number;
+  blocked: number;
+  failed: number;
+  cost_usd: number;
+  dry_run: boolean;
+  tasks: { title: string; status: string; branch?: string; note?: string }[];
+  blockers: string[];
+}
+
+/** POST /api/projects -> projet créé + backlog initial. */
+export interface CreateProjectResponse {
+  project: Project;
+  tasks: Task[];
+}
+
+/** Action de transition applicable à une tâche. */
+export type TaskAction = "approve" | "reject" | "retry";

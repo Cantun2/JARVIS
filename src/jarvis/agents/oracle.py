@@ -52,7 +52,9 @@ class Oracle(JarvisAgent):
 
     async def run(self, data: AgentInput, ctx: AgentContext) -> AgentOutput:
         assert isinstance(data, OracleInput)
-        report = MOCK_NIGHT_REPORT
+        # Night Report réel (dry-run) s'il existe, sinon repli sur le mock.
+        stored = ctx.tasks.latest_night_report() if ctx.tasks else None
+        report = stored or MOCK_NIGHT_REPORT
         sections: dict[str, Any] = {}
         lines: list[str] = ["Bonjour."]
 

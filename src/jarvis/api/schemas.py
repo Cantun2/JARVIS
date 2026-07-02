@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -75,3 +75,56 @@ class InboxDTO(BaseModel):
 class BriefingDTO(BaseModel):
     text: str
     sections: dict[str, Any]
+
+
+class ProjectDTO(BaseModel):
+    id: str
+    name: str
+    goal: str
+    created_ts: str
+    task_counts: dict[str, int]
+
+
+class TaskDTO(BaseModel):
+    id: str
+    project_id: str
+    title: str
+    description: str
+    acceptance_criteria: list[str]
+    status: str
+    report: str
+    diff: str
+    blocker: str | None
+    updated_ts: str
+
+
+class NightTaskDTO(BaseModel):
+    title: str
+    status: str
+    branch: str | None = None
+    note: str = ""
+
+
+class NightReportDTO(BaseModel):
+    date: str
+    done: int
+    blocked: int
+    failed: int
+    cost_usd: float
+    dry_run: bool
+    tasks: list[NightTaskDTO]
+    blockers: list[str]
+
+
+class CreateProjectRequest(BaseModel):
+    goal: str
+    name: str | None = None
+
+
+class CreateProjectResponse(BaseModel):
+    project: ProjectDTO
+    tasks: list[TaskDTO]
+
+
+class TransitionRequest(BaseModel):
+    action: Literal["approve", "reject", "retry"]

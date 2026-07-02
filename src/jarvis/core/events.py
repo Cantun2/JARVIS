@@ -47,6 +47,8 @@ class EventType(StrEnum):
     AGENT_FAILED = "agent.failed"
     AGENT_ESCALATED = "agent.escalated"
     BRIEFING_READY = "briefing.ready"
+    BACKLOG_READY = "backlog.ready"
+    TASK_TRANSITIONED = "task.transitioned"
     NIGHT_REPORT_READY = "night.report_ready"
     PERMISSION_DENIED = "permission.denied"
     BUDGET_EXCEEDED = "budget.exceeded"

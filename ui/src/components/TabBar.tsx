@@ -1,4 +1,4 @@
-export type TabId = "dashboard" | "inbox" | "briefing";
+export type TabId = "dashboard" | "inbox" | "briefing" | "mission";
 
 interface Props {
   active: TabId;
@@ -9,6 +9,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "dashboard", label: "Dashboard" },
   { id: "inbox", label: "Inbox" },
   { id: "briefing", label: "Briefing" },
+  { id: "mission", label: "Mission Control" },
 ];
 
 /** Barre d'onglets HUD : accent cyan sur l'onglet actif. */

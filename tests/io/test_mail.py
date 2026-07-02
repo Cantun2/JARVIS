@@ -106,7 +106,5 @@ async def test_gmail_source_fetches_via_injected_service() -> None:
 
 
 def test_build_mail_gmail_when_real_and_configured() -> None:
-    source = build_mail(
-        Settings(mode="real", mail_backend="gmail", gmail_token_path="tok.json")
-    )
+    source = build_mail(Settings(mode="real", mail_backend="gmail", gmail_token_path="tok.json"))
     assert isinstance(source, GmailMailSource)

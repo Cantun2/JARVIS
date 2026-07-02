@@ -2,25 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
-
-
-class NightTask(BaseModel):
-    title: str
-    status: str  # done | blocked | failed
-    branch: str | None = None
-    note: str = ""
-
-
-class NightReport(BaseModel):
-    date: str
-    done: int
-    blocked: int
-    failed: int
-    cost_usd: float
-    tasks: tuple[NightTask, ...]
-    blockers: tuple[str, ...]
-
+from jarvis.night.models import NightReport, NightTask
 
 MOCK_NIGHT_REPORT = NightReport(
     date="2026-07-01",

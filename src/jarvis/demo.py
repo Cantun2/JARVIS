@@ -120,8 +120,57 @@ def _check_sequence(ctx: object) -> bool:
         return False
 
 
+async def run_demo_phase3() -> int:
+    from jarvis.agents.daedalus import DaedalusInput, DaedalusOutput
+    from jarvis.core.events import EventType as ET
+    from jarvis.night.manager import NightShiftManager
+
+    ctx = build_context(Settings(mode="mock", db_path=":memory:"))
+    _banner("JARVIS · Démo Phase 3 · La nuit (DAEDALUS + dry-run) · MOCK")
+
+    out = await ctx.runner.run_by_name(
+        "DAEDALUS",
+        DaedalusInput(goal="Ajouter un tableau de bord de stats", project_name="Reporting"),
+    )
+    assert isinstance(out, DaedalusOutput)
+    project_id = out.project_id
+    report = await NightShiftManager(ctx.tasks, ctx.bus, ctx.settings).run_night(project_id)
+    await ctx.bus.drain()
+
+    print(_c("\n»  Backlog généré par DAEDALUS\n", "\033[1m"))
+    for task in ctx.tasks.list_tasks(project_id):
+        print(f"    [{task.status.value:<11}] {task.title}")
+
+    print(_c("\n»  Night Report (dry-run)\n", "\033[1m"))
+    print(
+        f"    done={report.done}  blocked={report.blocked}  failed={report.failed}  "
+        f"coût={report.cost_usd}€  dry_run={report.dry_run}"
+    )
+    for blocker in report.blockers:
+        print(f"    ⚠ {blocker}")
+
+    types = [e.type for e in ctx.journal.replay()]
+    ok = (
+        ET.BACKLOG_READY in types
+        and types.index(ET.BACKLOG_READY)
+        < types.index(ET.TASK_TRANSITIONED)
+        < types.index(ET.NIGHT_REPORT_READY)
+    )
+    print()
+    if ok:
+        print(_c("✓ Nuit dry-run cohérente (VULCAN resté désarmé). Démo OK.", "\033[92m"))
+    else:
+        print(_c("✗ Séquence nocturne incohérente.", "\033[91m"))
+    ctx.close()
+    return 0 if ok else 1
+
+
 def main() -> int:
     return asyncio.run(run_demo())
+
+
+def main_phase3() -> int:
+    return asyncio.run(run_demo_phase3())
 
 
 if __name__ == "__main__":

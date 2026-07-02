@@ -5,6 +5,7 @@ import ConnectionBadge from "./components/ConnectionBadge";
 import Dashboard from "./components/Dashboard";
 import InboxPanel from "./components/InboxPanel";
 import BriefingPanel from "./components/BriefingPanel";
+import MissionControl from "./components/MissionControl";
 import TabBar, { type TabId } from "./components/TabBar";
 import { useEventStream } from "./lib/ws";
 
@@ -45,6 +46,7 @@ export default function App(): JSX.Element {
         )}
         {tab === "inbox" && <InboxPanel events={events} />}
         {tab === "briefing" && <BriefingPanel events={events} />}
+        {tab === "mission" && <MissionControl events={events} />}
       </div>
     </main>
   );
