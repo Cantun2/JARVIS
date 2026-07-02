@@ -13,22 +13,31 @@ Machine cible détectée : Ubuntu 24.04, GNOME 46 **Wayland**, 3 écrans visés,
 - [ ] UI : `cd ui && npm install` puis `make ui-dev` (navigateur) + `make serve` (API) dans deux terminaux.
 
 ## 1. Inférence
-Deux options, non exclusives. En mock, aucune n'est nécessaire.
+En mock, rien n'est nécessaire. Sur cette machine (CPU, pas de clé Anthropic) → **Ollama local**.
 
-### a) Local (OpenJarvis + Ollama) — optionnel, **lent sur cette machine (CPU only)**
-- [ ] Installer `uv` : `curl -LsSf https://astral.sh/uv/install.sh | sh`.
-- [ ] Installer Rust (pour le build natif OpenJarvis) : `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`.
-- [ ] Installer Ollama : `curl -fsSL https://ollama.com/install.sh | sh`, puis `ollama pull qwen3:4b` (petit modèle, CPU).
-- [ ] Lancer OpenJarvis : `jarvis serve` (expose l'API OpenAI-compatible).
-- [ ] Dans `.env` : `JARVIS_MODE=real` et `JARVIS_INFERENCE_URL=http://localhost:8080/v1`.
+### a) Ollama local (recommandé — CPU, buildless) ✅
+- [ ] Installer Ollama : `curl -fsSL https://ollama.com/install.sh | sh`.
+- [ ] Tirer un petit modèle : `ollama pull qwen2.5:3b` (léger, adapté CPU).
+- [ ] Dans `.env` : `JARVIS_MODE=real`, `JARVIS_OLLAMA_URL=http://localhost:11434`, `JARVIS_LOCAL_MODEL=qwen2.5:3b`.
+- [ ] Vérifier : `make doctor` → `Backend inférence : ollama`. Note : le triage HERMES marche même si le
+  modèle est lent (résumé best-effort avec repli). Baisse `limit` si besoin sur beaucoup de mails.
 
-### b) Cloud (Anthropic) — pour le raisonnement lourd / la rédaction
-- [ ] `pip install -e ".[cloud]"`.
-- [ ] Dans `.env` : `JARVIS_MODE=real`, `ANTHROPIC_API_KEY=...`, `JARVIS_CLOUD_MODEL=claude-sonnet-4-6`.
+### b) OpenJarvis (serveur OpenAI-compatible) — optionnel
+- [ ] Installer `uv` + Rust, lancer `jarvis serve`, puis `.env` : `JARVIS_MODE=real`,
+  `JARVIS_INFERENCE_URL=http://localhost:8080/v1`.
+
+### c) Cloud (Anthropic) — **différé** (pas de clé pour l'instant)
+- [ ] Le jour venu : `pip install -e ".[cloud]"`, `ANTHROPIC_API_KEY=...` (backend cloud direct à ajouter).
 
 ## 2. Mails (HERMES) — OAuth Google
-- [ ] Via OpenJarvis : `jarvis connect gdrive` (un seul OAuth pour Gmail/Calendar/Tasks).
-- [ ] (Le pipeline de fetch réel remplacera les fixtures `agents/mocks/mail_fixtures.py`.)
+- [ ] `pip install -e ".[google]"` (google-api-python-client + auth).
+- [ ] Créer un projet Google Cloud, activer l'API Gmail, créer des identifiants OAuth « Desktop »,
+  télécharger le `credentials.json`.
+- [ ] Générer un `token.json` autorisé (scope `gmail.readonly`) — via `jarvis connect gdrive` (OpenJarvis)
+  ou un petit script `google-auth-oauthlib` (flow local une fois).
+- [ ] Dans `.env` : `JARVIS_MODE=real`, `JARVIS_MAIL_BACKEND=gmail`,
+  `GMAIL_CREDENTIALS_PATH=secrets/gmail_credentials.json`, `GMAIL_TOKEN_PATH=secrets/gmail_token.json`.
+- [ ] `secrets/` est gitignoré. HERMES trie alors de vrais mails (lecture seule, jamais d'envoi).
 
 ## 3. Telegram (notifications / escalades)
 - [ ] Créer un bot via @BotFather, récupérer le token.

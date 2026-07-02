@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from jarvis.agents.hermes import Hermes, HermesInput, HermesOutput, classify
+from jarvis.agents.hermes import Hermes, HermesInput, HermesOutput, _fallback_summary, classify
 from jarvis.agents.mocks.mail_fixtures import MOCK_MAILS
 from jarvis.assembly import JarvisContext
 from jarvis.core.events import EventType
+from jarvis.io.mail import Mail
 
 
 def _mail(mail_id: str):  # type: ignore[no-untyped-def]
@@ -44,3 +45,16 @@ async def test_hermes_charges_token_budget(ctx: JarvisContext) -> None:
     status = ctx.journal.latest_status_by_agent()["HERMES"]
     assert status["status"] == "finished"
     assert status["tokens"] > 0  # le résumé via gateway a consommé des tokens
+
+
+async def test_triaged_event_is_enriched(ctx: JarvisContext) -> None:
+    await ctx.runner.run(Hermes(), HermesInput())
+    triaged = ctx.journal.replay(types=[EventType.MAIL_TRIAGED])
+    payload = triaged[0].payload
+    assert {"id", "sender", "subject", "category", "priority", "summary"} <= set(payload)
+
+
+def test_fallback_summary() -> None:
+    mail = Mail(id="x", sender="a@x.com", subject="Réunion demain", body="...")
+    assert _fallback_summary(mail) == "Réunion demain"
+    assert _fallback_summary(Mail(id="y", sender="a", subject="", body="")) == "(sans objet)"

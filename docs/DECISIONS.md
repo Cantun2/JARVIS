@@ -53,6 +53,26 @@ l'extension (cf. MANUAL_SETUP).
 différé.
 **Conséquences.** `make ui-dev` + `make serve` donnent le HUD live immédiatement, sans dépendance système.
 
+## ADR-8 — Source de mails abstraite (MailSource), Gmail derrière config
+**Contexte.** HERMES doit trier de vrais mails (Gmail) sans casser le mode mock ni imposer l'OAuth.
+**Décision.** `io/mail.py` : Protocol `MailSource` + `MockMailSource` (défaut) + `GmailMailSource` (réel,
+`google-api-python-client`, import paresseux, extra `[google]`, service injectable pour les tests).
+Injecté dans `AgentContext.mail`, **gaté par `Permission.MAIL_READ`**, consommé via `ctx.require_mail()`.
+Même moule que Telegram.
+**Conséquences.** `make check`/`make demo` restent verts sans credential ; brancher Gmail = config + OAuth
+(cf. MANUAL_SETUP), zéro changement de code agent.
+
+## ADR-9 — Inférence réelle = Ollama local (CPU), pas de cloud pour l'instant
+**Contexte.** Machine actuelle et suivante **sans GPU** ; **pas de clé Anthropic**. L'inférence locale doit
+tourner sur CPU, sans build.
+**Décision.** `OllamaBackend` (httpx sur l'API OpenAI-compatible d'Ollama `:11434/v1`, buildless) branché
+dans `build_backend` en priorité si `JARVIS_OLLAMA_URL` est défini ; sinon serveur OpenAI-compatible
+générique ; sinon Mock (défaut). Le cloud (Anthropic) est **différé**. Côté HERMES, le résumé via modèle est
+**best-effort** (timeout + repli déterministe) : le triage (règles) ne dépend jamais du modèle → robuste sur
+CPU lent.
+**Conséquences.** Chemin réel simple et local : `ollama pull <modèle>` + une variable d'env. Pas de Rust, pas
+de cloud, pas de coût.
+
 ## ADR-7 — VULCAN livré désarmé
 **Contexte.** Le Night Shift est le module le plus puissant et le plus dangereux.
 **Décision.** VULCAN est livré `enabled=False`. L'`AgentRunner` refuse tout agent désarmé (`AgentDisarmed`) ;

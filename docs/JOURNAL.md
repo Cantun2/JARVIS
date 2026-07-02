@@ -1,5 +1,35 @@
 # JOURNAL de bord
 
+## Session 2 — 2026-07-02 — Phase 2 : le réveil branché au réel
+
+**Objectif.** Rendre HERMES/ORACLE réels tout en gardant le mock par défaut (spec §Phase 2, items 8-9).
+Contrainte : CPU-only (machine actuelle et suivante), pas de clé Anthropic → **inférence locale Ollama**.
+
+**Fait.**
+- **MailSource** (`io/mail.py`) : `Mail`, Protocol `MailSource`, `MockMailSource` (défaut), `GmailMailSource`
+  (réel, extra `[google]`, service injectable) + `build_mail`. Injecté dans `AgentContext.mail`
+  (`require_mail()`), gaté par `MAIL_READ`. HERMES lit désormais `ctx.require_mail().fetch(...)`.
+- **OllamaBackend** (`inference/ollama_backend.py`) : API OpenAI-compatible d'Ollama, buildless, transport
+  injectable ; branché en priorité dans `build_backend` (`JARVIS_OLLAMA_URL`). Résumé HERMES **best-effort**
+  (timeout + repli déterministe) → robuste sur CPU.
+- **Événements** : `mail.triaged` enrichi (`subject`+`sender`). **API** : `GET /api/inbox`, `GET /api/briefing`
+  (dérivés du journal, sans état neuf).
+- **UI** : navigation par **onglets** (Dashboard/Inbox/Briefing), panneaux **Inbox** (lecture seule) et
+  **Briefing** (texte + sections + Night Report), boutons de déclenchement (ATLAS/HERMES/ORACLE).
+- **Config** : `mail_backend`, `gmail_*`, `ollama_url`, `local_model` + `.env.example`. **doctor** enrichi.
+  Extra `[google]` dans `pyproject`.
+
+**Validation.** `make check` vert : ruff clean, mypy strict (55 fichiers), pytest (backend) + vitest (44
+tests UI). Mock reste le défaut (aucun test ne touche le réseau ; Gmail/Ollama testés avec faux client/transport).
+
+**Décisions.** ADR-8 (MailSource) et ADR-9 (Ollama local, cloud différé) — cf. `DECISIONS.md`.
+
+**Questions ouvertes.** Génération du `token.json` Gmail (script OAuth one-shot vs `jarvis connect gdrive`) ;
+modèle Ollama à retenir sur la future machine ; seuils de `limit`/timeout HERMES selon la vitesse CPU réelle.
+
+**Prochaine étape.** Brancher réellement (Ollama + OAuth Gmail) et vérifier bout-en-bout ; puis Phase 3
+(DAEDALUS → VULCAN) ou Phase 4 (ECHO voix, HERMES v2 corrections).
+
 ## Session 1 — 2026-07-01 — Fondations + réveil (mock)
 
 **Objectif.** Fondations solides d'abord (choix utilisateur) : Phase 1 complète et testée + la

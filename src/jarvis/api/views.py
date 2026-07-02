@@ -2,10 +2,19 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any
 
-from jarvis.api.schemas import AgentDTO, EventDTO, LastRunDTO
+from jarvis.api.schemas import (
+    AgentDTO,
+    BriefingDTO,
+    EventDTO,
+    InboxDTO,
+    InboxItemDTO,
+    LastRunDTO,
+)
 from jarvis.assembly import JarvisContext
+from jarvis.core.events import EventType
 
 
 def agent_dtos(ctx: JarvisContext) -> list[AgentDTO]:
@@ -51,3 +60,34 @@ def build_snapshot(ctx: JarvisContext, *, recent: int = 100) -> dict[str, Any]:
         "events": events,
         "latest_seq": latest,
     }
+
+
+def latest_inbox_dto(ctx: JarvisContext) -> InboxDTO:
+    """Dernier triage HERMES, dérivé du journal (dédup par id, tri par priorité)."""
+    by_id: dict[str, InboxItemDTO] = {}
+    for event in ctx.journal.replay(types=[EventType.MAIL_TRIAGED]):
+        p = event.payload
+        mail_id = str(p.get("id", ""))
+        by_id[mail_id] = InboxItemDTO(
+            id=mail_id,
+            sender=str(p.get("sender", "")),
+            subject=str(p.get("subject", "")),
+            category=str(p.get("category", "")),
+            priority=int(p.get("priority", 0)),
+            summary=str(p.get("summary", "")),
+        )
+    items = sorted(by_id.values(), key=lambda i: i.priority, reverse=True)
+    counts = dict(Counter(i.category for i in items))
+    return InboxDTO(items=items, counts=counts)
+
+
+def latest_briefing_dto(ctx: JarvisContext) -> BriefingDTO | None:
+    """Dernier briefing ORACLE, dérivé du journal."""
+    briefings = ctx.journal.replay(types=[EventType.BRIEFING_READY])
+    if not briefings:
+        return None
+    payload = briefings[-1].payload
+    return BriefingDTO(
+        text=str(payload.get("text", "")),
+        sections=dict(payload.get("sections", {})),
+    )

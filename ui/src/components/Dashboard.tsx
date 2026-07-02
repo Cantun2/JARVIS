@@ -1,7 +1,4 @@
-import { motion } from "framer-motion";
 import AgentStatusArc from "./AgentStatusArc";
-import Clock from "./Clock";
-import ConnectionBadge from "./ConnectionBadge";
 import EventFeed from "./EventFeed";
 import type { Agent, Health, SeqEvent } from "../lib/types";
 
@@ -9,42 +6,19 @@ interface Props {
   events: SeqEvent[];
   agents: Agent[];
   health: Health | null;
-  connected: boolean;
 }
 
-/** Layout HUD principal : en-tête (horloge + lien), arc d'agents, flux live. */
-export default function Dashboard({ events, agents, health, connected }: Props): JSX.Element {
+/** Layout HUD principal : arc d'agents + flux live (en-tête géré par App). */
+export default function Dashboard({ events, agents, health }: Props): JSX.Element {
   return (
-    <div className="flex h-full flex-col gap-4 p-4 md:p-6">
-      {/* En-tête */}
-      <motion.header
-        className="hud-panel flex items-center justify-between gap-4 px-4 py-3 md:px-6"
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
-      >
-        <div className="flex items-center gap-4">
-          <div>
-            <div className="text-sm font-bold tracking-[0.3em] text-hud-cyan">JARVIS</div>
-            <div className="hud-label">Mission Control</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <Clock />
-          <ConnectionBadge connected={connected} health={health} />
-        </div>
-      </motion.header>
-
-      {/* Corps : arc d'agents + flux */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="flex min-h-0 flex-col gap-4 lg:col-span-1">
-          <AgentStatusArc agents={agents} events={events} />
-          <SummaryPanel agents={agents} events={events} health={health} />
-        </div>
-        <div className="flex min-h-0 lg:col-span-2">
-          <div className="flex min-h-0 w-full flex-col">
-            <EventFeed events={events} />
-          </div>
+    <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="flex min-h-0 flex-col gap-4 lg:col-span-1">
+        <AgentStatusArc agents={agents} events={events} />
+        <SummaryPanel agents={agents} events={events} health={health} />
+      </div>
+      <div className="flex min-h-0 lg:col-span-2">
+        <div className="flex min-h-0 w-full flex-col">
+          <EventFeed events={events} />
         </div>
       </div>
     </div>

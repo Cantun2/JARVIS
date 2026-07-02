@@ -41,6 +41,7 @@ class AgentRunner:
         gateway: Any | None = None,
         desktop: Any | None = None,
         telegram: Any | None = None,
+        mail: Any | None = None,
     ) -> None:
         self.bus = bus
         self.enforcer = enforcer
@@ -48,6 +49,7 @@ class AgentRunner:
         self.gateway = gateway
         self.desktop = desktop
         self.telegram = telegram
+        self.mail = mail
 
     async def run_by_name(self, name: str, data: AgentInput) -> AgentOutput:
         return await self.run(self.registry.get(name), data)
@@ -92,6 +94,7 @@ class AgentRunner:
             gateway=self.gateway if Permission.NET_CLOUD_INFERENCE in granted else None,
             desktop=self.desktop if granted & _DESKTOP_PERMS else None,
             telegram=self.telegram if Permission.NOTIFY_TELEGRAM in granted else None,
+            mail=self.mail if Permission.MAIL_READ in granted else None,
             trigger_fn=self.run_by_name,
         )
 

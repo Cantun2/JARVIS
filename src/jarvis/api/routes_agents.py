@@ -6,8 +6,15 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import ValidationError
 
 from jarvis import __version__
-from jarvis.api.schemas import AgentDTO, HealthDTO, RunRequest, RunResultDTO
-from jarvis.api.views import agent_dtos
+from jarvis.api.schemas import (
+    AgentDTO,
+    BriefingDTO,
+    HealthDTO,
+    InboxDTO,
+    RunRequest,
+    RunResultDTO,
+)
+from jarvis.api.views import agent_dtos, latest_briefing_dto, latest_inbox_dto
 from jarvis.assembly import JarvisContext
 from jarvis.core.errors import AgentDisarmed, BudgetExceeded, PermissionDenied
 
@@ -35,6 +42,16 @@ async def health(request: Request) -> HealthDTO:
 @router.get("/agents", response_model=list[AgentDTO])
 async def list_agents(request: Request) -> list[AgentDTO]:
     return agent_dtos(_ctx(request))
+
+
+@router.get("/inbox", response_model=InboxDTO)
+async def get_inbox(request: Request) -> InboxDTO:
+    return latest_inbox_dto(_ctx(request))
+
+
+@router.get("/briefing", response_model=BriefingDTO | None)
+async def get_briefing(request: Request) -> BriefingDTO | None:
+    return latest_briefing_dto(_ctx(request))
 
 
 @router.post("/agents/{name}/run", response_model=RunResultDTO)

@@ -13,6 +13,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Mode = Literal["mock", "real"]
 DesktopBackend = Literal["mock", "gnome"]
+MailBackend = Literal["mock", "gmail"]
 
 
 class Settings(BaseSettings):
@@ -40,6 +41,14 @@ class Settings(BaseSettings):
     inference_url: str | None = Field(default=None, alias="JARVIS_INFERENCE_URL")
     cloud_model: str = Field(default="claude-sonnet-4-6", alias="JARVIS_CLOUD_MODEL")
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
+    # Inférence locale (Ollama, CPU, sans build) — endpoint OpenAI-compatible :11434/v1
+    ollama_url: str | None = Field(default=None, alias="JARVIS_OLLAMA_URL")
+    local_model: str = Field(default="qwen2.5:3b", alias="JARVIS_LOCAL_MODEL")
+
+    # Mails (HERMES) : mock par défaut ; gmail = OAuth Google (cf. MANUAL_SETUP)
+    mail_backend: MailBackend = Field(default="mock", alias="JARVIS_MAIL_BACKEND")
+    gmail_credentials_path: str | None = Field(default=None, alias="GMAIL_CREDENTIALS_PATH")
+    gmail_token_path: str | None = Field(default=None, alias="GMAIL_TOKEN_PATH")
 
     # Telegram
     telegram_bot_token: str | None = Field(default=None, alias="TELEGRAM_BOT_TOKEN")

@@ -17,6 +17,11 @@ log = get_logger("jarvis.inference")
 
 
 def build_backend(settings: Settings) -> InferenceBackend:
+    if settings.mode == "real" and settings.ollama_url:
+        from jarvis.inference.ollama_backend import OllamaBackend
+
+        log.info("inference_backend", backend="ollama", url=settings.ollama_url)
+        return OllamaBackend(settings.ollama_url, default_model=settings.local_model)
     if settings.mode == "real" and settings.inference_url:
         from jarvis.inference.openjarvis_backend import OpenJarvisBackend
 
@@ -27,7 +32,7 @@ def build_backend(settings: Settings) -> InferenceBackend:
             default_model=settings.cloud_model,
         )
     if settings.mode == "real":
-        log.warning("inference_backend_fallback", reason="JARVIS_INFERENCE_URL absent → mock")
+        log.warning("inference_backend_fallback", reason="ni JARVIS_OLLAMA_URL ni URL → mock")
     return MockBackend()
 
 

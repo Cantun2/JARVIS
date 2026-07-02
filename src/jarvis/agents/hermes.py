@@ -7,12 +7,13 @@ JAMAIS de MAIL_SEND.
 
 from __future__ import annotations
 
+import asyncio
 from collections import Counter
 
 from pydantic import BaseModel
 
 from jarvis.agents.base import JarvisAgent
-from jarvis.agents.mocks.mail_fixtures import MOCK_MAILS, VIP_SENDERS, MockMail
+from jarvis.agents.mocks.mail_fixtures import VIP_SENDERS
 from jarvis.core.context import AgentContext
 from jarvis.core.contracts import (
     AgentContract,
@@ -22,7 +23,9 @@ from jarvis.core.contracts import (
     Permission,
 )
 from jarvis.core.events import EventType
+from jarvis.inference.gateway import InferenceGateway
 from jarvis.inference.types import ChatMessage
+from jarvis.io.mail import Mail
 
 # Catégories, de la plus prioritaire à la moins.
 CATEGORY_PRIORITY = {"urgent": 100, "action": 70, "info": 40, "newsletter": 20, "spam": 0}
@@ -33,7 +36,15 @@ _NEWSLETTER_HINT = ("newsletter", "no-reply", "noreply", "mailchimp", "désabonn
 _SPAM_KW = ("gagné", "loterie", "viagra", "click here", "félicitations vous avez")
 
 
-def classify(mail: MockMail) -> tuple[str, int]:
+def _fallback_summary(mail: Mail) -> str:
+    """Résumé déterministe sans modèle (repli quand l'inférence est lente/absente)."""
+    text = " ".join(mail.subject.split())
+    if not text:
+        return "(sans objet)"
+    return text[:117] + "…" if len(text) > 120 else text
+
+
+def classify(mail: Mail) -> tuple[str, int]:
     """Retourne (catégorie, priorité). Déterministe."""
     text = f"{mail.subject}\n{mail.body}".lower()
     sender = mail.sender.lower()
@@ -79,10 +90,13 @@ class Hermes(JarvisAgent):
         outputs=HermesOutput,
     )
 
+    # Délai max du résumé par mail ; au-delà, repli déterministe (CPU lent).
+    _summary_timeout: float = 15.0
+
     async def run(self, data: AgentInput, ctx: AgentContext) -> AgentOutput:
         assert isinstance(data, HermesInput)
         gateway = ctx.require_gateway()
-        mails = MOCK_MAILS[: data.limit]
+        mails = await ctx.require_mail().fetch(limit=data.limit)
         triaged: list[TriagedMail] = []
 
         for mail in mails:
@@ -93,35 +107,42 @@ class Hermes(JarvisAgent):
                 subject=mail.subject,
             )
             category, priority = classify(mail)
-            resp = await gateway.complete(
-                [
-                    ChatMessage(
-                        role="user",
-                        content=f"Résume en une phrase: {mail.subject} — {mail.body[:160]}",
-                    )
-                ],
-                tier="local",
-                max_tokens=60,
-            )
-            ctx.budget.charge(tokens=resp.usage.total_tokens)
+            summary = await self._summarize(gateway, mail, ctx)
             item = TriagedMail(
                 id=mail.id,
                 sender=mail.sender,
                 subject=mail.subject,
                 category=category,
                 priority=priority,
-                summary=resp.text,
+                summary=summary,
             )
             triaged.append(item)
             await ctx.emit(
                 EventType.MAIL_TRIAGED,
                 id=mail.id,
+                sender=mail.sender,
+                subject=mail.subject,
                 category=category,
                 priority=priority,
-                summary=item.summary,
+                summary=summary,
             )
 
         triaged.sort(key=lambda m: m.priority, reverse=True)
         counts = dict(Counter(m.category for m in triaged))
         urgent = tuple(m for m in triaged if m.category == "urgent")
         return HermesOutput(triaged=tuple(triaged), counts=counts, urgent=urgent)
+
+    async def _summarize(self, gateway: InferenceGateway, mail: Mail, ctx: AgentContext) -> str:
+        """Résumé une-ligne via le modèle, best-effort. Repli déterministe si lent/absent."""
+        prompt = f"Résume en une phrase: {mail.subject} — {mail.body[:160]}"
+        try:
+            resp = await asyncio.wait_for(
+                gateway.complete(
+                    [ChatMessage(role="user", content=prompt)], tier="local", max_tokens=60
+                ),
+                timeout=self._summary_timeout,
+            )
+        except Exception:
+            return _fallback_summary(mail)
+        ctx.budget.charge(tokens=resp.usage.total_tokens)
+        return resp.text.strip() or _fallback_summary(mail)
