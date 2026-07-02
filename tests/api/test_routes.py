@@ -58,6 +58,26 @@ def test_run_vulcan_is_conflict(client: TestClient) -> None:
     assert client.post("/api/agents/VULCAN/run", json={}).status_code == 409
 
 
+def test_inbox_after_hermes(client: TestClient) -> None:
+    assert client.get("/api/inbox").json() == {"items": [], "counts": {}}
+    client.post("/api/agents/HERMES/run", json={})
+    inbox = client.get("/api/inbox").json()
+    assert inbox["counts"].get("urgent", 0) >= 1
+    first = inbox["items"][0]
+    assert {"id", "sender", "subject", "category", "priority", "summary"} <= set(first)
+    # trié par priorité décroissante
+    priorities = [i["priority"] for i in inbox["items"]]
+    assert priorities == sorted(priorities, reverse=True)
+
+
+def test_briefing_after_oracle(client: TestClient) -> None:
+    assert client.get("/api/briefing").json() is None
+    client.post("/api/agents/ORACLE/run", json={})
+    briefing = client.get("/api/briefing").json()
+    assert briefing["text"].startswith("Bonjour.")
+    assert "night_report" in briefing["sections"]
+
+
 def test_events_pagination(client: TestClient) -> None:
     client.post("/api/agents/ORACLE/run", json={})
     page = client.get("/api/events?since=0").json()

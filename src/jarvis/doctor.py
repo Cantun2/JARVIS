@@ -31,6 +31,7 @@ _PY_PACKAGES = {
     "openjarvis": "backend d'inférence réel (extra [openjarvis])",
     "anthropic": "inférence cloud (extra [cloud])",
     "ollama": "client Ollama (extra [local])",
+    "googleapiclient": "API Gmail réelle (extra [google])",
 }
 
 
@@ -47,8 +48,11 @@ def main() -> int:
     print("JARVIS · doctor\n")
     print(f"  Mode effectif        : {settings.mode}")
     print(f"  Backend inférence     : {build_backend(settings).name}")
+    print(f"  URL Ollama            : {settings.ollama_url or '—'} (modèle {settings.local_model})")
+    print(f"  URL inférence (OpenAI): {settings.inference_url or '—'}")
     print(f"  Backend desktop       : {settings.desktop_backend}")
-    print(f"  URL inférence         : {settings.inference_url or '—'}")
+    print(f"  Backend mails         : {settings.mail_backend}")
+    print(f"  Token OAuth Gmail     : {'défini' if settings.gmail_token_path else '—'}")
     print(f"  Clé Anthropic         : {'définie' if settings.anthropic_api_key else '—'}")
     print(f"  Token Telegram        : {'défini' if settings.telegram_bot_token else '—'}")
 

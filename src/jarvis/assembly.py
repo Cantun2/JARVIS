@@ -19,6 +19,7 @@ from jarvis.desktop.controller import DesktopController
 from jarvis.desktop.factory import build_desktop
 from jarvis.inference.factory import build_gateway
 from jarvis.inference.gateway import InferenceGateway
+from jarvis.io.mail import MailSource, build_mail
 from jarvis.io.telegram import TelegramNotifier, build_telegram
 
 
@@ -33,6 +34,7 @@ class JarvisContext:
     gateway: InferenceGateway
     desktop: DesktopController
     telegram: TelegramNotifier
+    mail: MailSource
 
     def close(self) -> None:
         self.journal.close()
@@ -46,9 +48,16 @@ def build_context(settings: Settings | None = None) -> JarvisContext:
     gateway = build_gateway(settings)
     desktop = build_desktop(settings)
     telegram = build_telegram(settings)
+    mail = build_mail(settings)
     registry = AgentRegistry()
     runner = AgentRunner(
-        bus, enforcer, registry, gateway=gateway, desktop=desktop, telegram=telegram
+        bus,
+        enforcer,
+        registry,
+        gateway=gateway,
+        desktop=desktop,
+        telegram=telegram,
+        mail=mail,
     )
     for agent in default_agents():
         registry.register(agent)
@@ -62,4 +71,5 @@ def build_context(settings: Settings | None = None) -> JarvisContext:
         gateway=gateway,
         desktop=desktop,
         telegram=telegram,
+        mail=mail,
     )

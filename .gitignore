@@ -28,6 +28,7 @@ var/
 ui/node_modules/
 ui/dist/
 ui/.vite/
+*.tsbuildinfo
 
 # Tauri (build Rust)
 ui/src-tauri/target/

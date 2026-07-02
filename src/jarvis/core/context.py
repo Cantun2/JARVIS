@@ -18,6 +18,7 @@ from jarvis.core.events import EventType
 if TYPE_CHECKING:  # imports uniquement pour le typage — pas de couplage runtime du Core
     from jarvis.desktop.controller import DesktopController
     from jarvis.inference.gateway import InferenceGateway
+    from jarvis.io.mail import MailSource
     from jarvis.io.telegram import TelegramNotifier
 
 EmitFn = Callable[[EventType, dict[str, Any]], Awaitable[int]]
@@ -57,6 +58,7 @@ class AgentContext:
     gateway: InferenceGateway | None = None
     desktop: DesktopController | None = None
     telegram: TelegramNotifier | None = None
+    mail: MailSource | None = None
     trigger_fn: TriggerFn | None = None
 
     async def emit(self, type: EventType, **payload: Any) -> int:
@@ -77,6 +79,11 @@ class AgentContext:
         if self.telegram is None:
             raise PermissionDenied(f"{self.agent_name}: NOTIFY_TELEGRAM non accordée")
         return self.telegram
+
+    def require_mail(self) -> MailSource:
+        if self.mail is None:
+            raise PermissionDenied(f"{self.agent_name}: MAIL_READ non accordée")
+        return self.mail
 
     async def trigger(self, name: str, data: AgentInput) -> AgentOutput:
         """Déclenche un autre agent (ex. ATLAS → HERMES) via l'orchestrateur."""

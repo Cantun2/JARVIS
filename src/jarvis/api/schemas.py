@@ -56,3 +56,22 @@ class EventDTO(BaseModel):
 class EventsPageDTO(BaseModel):
     events: list[EventDTO]
     latest_seq: int
+
+
+class InboxItemDTO(BaseModel):
+    id: str
+    sender: str
+    subject: str
+    category: str
+    priority: int
+    summary: str
+
+
+class InboxDTO(BaseModel):
+    items: list[InboxItemDTO]
+    counts: dict[str, int]
+
+
+class BriefingDTO(BaseModel):
+    text: str
+    sections: dict[str, Any]

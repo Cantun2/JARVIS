@@ -25,6 +25,11 @@ dev = [
 cloud = ["anthropic>=0.30"]
 local = ["ollama>=0.3"]
 openjarvis = ["openjarvis>=0.1"]
+google = [
+    "google-api-python-client>=2.100",
+    "google-auth-oauthlib>=1.2",
+    "google-auth-httplib2>=0.2",
+]
 
 [project.scripts]
 jarvis-suit = "jarvis.__main__:main"

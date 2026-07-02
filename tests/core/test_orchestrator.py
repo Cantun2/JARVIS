@@ -89,6 +89,23 @@ async def test_capability_gating(bus: EventBus, enforcer, registry: AgentRegistr
     assert captured == {"gateway": None, "desktop": dsk, "telegram": None}
 
 
+async def test_mail_capability_gating(bus: EventBus, enforcer, registry: AgentRegistry) -> None:  # type: ignore[no-untyped-def]
+    mail_sentinel = object()
+    runner = AgentRunner(bus, enforcer, registry, mail=mail_sentinel)
+    captured: dict[str, object | None] = {}
+
+    async def run_fn(_d: _In, ctx: AgentContext) -> _Out:
+        captured["mail"] = ctx.mail
+        return _Out()
+
+    await runner.run(_make("reader", run_fn, permissions=(Permission.MAIL_READ,)), _In())
+    assert captured["mail"] is mail_sentinel
+
+    captured.clear()
+    await runner.run(_make("blind", run_fn), _In())  # sans MAIL_READ → None
+    assert captured["mail"] is None
+
+
 async def test_require_capability_raises_when_absent(runner: AgentRunner) -> None:
     async def run_fn(_d: _In, ctx: AgentContext) -> _Out:
         ctx.require_gateway()  # pas de permission → PermissionDenied
