@@ -26,6 +26,7 @@ class Permission(StrEnum):
     SHELL_SANDBOXED = "shell.sandboxed"
     NET_CLOUD_INFERENCE = "net.cloud_inference"
     NOTIFY_TELEGRAM = "notify.telegram"
+    VOICE_IO = "voice.io"
 
 
 class Budget(BaseModel):

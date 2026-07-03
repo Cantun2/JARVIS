@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import Clock from "./components/Clock";
 import ConnectionBadge from "./components/ConnectionBadge";
 import Dashboard from "./components/Dashboard";
+import ChatPanel from "./components/ChatPanel";
 import InboxPanel from "./components/InboxPanel";
 import BriefingPanel from "./components/BriefingPanel";
 import MissionControl from "./components/MissionControl";
@@ -44,6 +45,7 @@ export default function App(): JSX.Element {
         {tab === "dashboard" && (
           <Dashboard events={events} agents={agents} health={health} />
         )}
+        {tab === "chat" && <ChatPanel events={events} />}
         {tab === "inbox" && <InboxPanel events={events} />}
         {tab === "briefing" && <BriefingPanel events={events} />}
         {tab === "mission" && <MissionControl events={events} />}

@@ -5,6 +5,7 @@ from __future__ import annotations
 from jarvis.agents.hermes import Hermes, HermesInput, HermesOutput, _fallback_summary, classify
 from jarvis.agents.mocks.mail_fixtures import MOCK_MAILS
 from jarvis.assembly import JarvisContext
+from jarvis.core.contracts import Permission
 from jarvis.core.events import EventType
 from jarvis.io.mail import Mail
 
@@ -58,3 +59,40 @@ def test_fallback_summary() -> None:
     mail = Mail(id="x", sender="a@x.com", subject="Réunion demain", body="...")
     assert _fallback_summary(mail) == "Réunion demain"
     assert _fallback_summary(Mail(id="y", sender="a", subject="", body="")) == "(sans objet)"
+
+
+# --- HERMES v2 : apprentissage + brouillons -----------------------------------
+
+
+def test_override_beats_default_rules() -> None:
+    news = _mail("m8")  # normalement "newsletter"
+    assert classify(news)[0] == "newsletter"
+    cat, prio = classify(news, {news.sender: "urgent"})
+    assert cat == "urgent" and prio == 100
+
+
+async def test_hermes_learns_override(ctx: JarvisContext) -> None:
+    news = _mail("m8")
+    ctx.mail_memory.set_override(news.sender, "urgent")
+    out = await ctx.runner.run(Hermes(), HermesInput())
+    assert isinstance(out, HermesOutput)
+    item = next(m for m in out.triaged if m.id == "m8")
+    assert item.category == "urgent"  # règle apprise appliquée
+
+
+async def test_hermes_drafts_for_action_and_urgent(ctx: JarvisContext) -> None:
+    out = await ctx.runner.run(Hermes(), HermesInput())
+    assert isinstance(out, HermesOutput)
+    for item in out.triaged:
+        if item.category in ("action", "urgent"):
+            assert item.draft, f"brouillon attendu pour {item.id}"
+        else:
+            assert item.draft is None
+    # Brouillons persistés + événement émis, mais RIEN envoyé.
+    assert ctx.mail_memory.list_drafts()
+    assert ctx.journal.replay(types=[EventType.MAIL_DRAFTED])
+
+
+async def test_hermes_never_requests_mail_send() -> None:
+    assert Permission.MAIL_SEND not in Hermes().contract.permissions
+    assert Permission.MAIL_DRAFT in Hermes().contract.permissions

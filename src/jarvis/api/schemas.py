@@ -65,11 +65,38 @@ class InboxItemDTO(BaseModel):
     category: str
     priority: int
     summary: str
+    draft: str | None = None
+    corrected: bool = False
 
 
 class InboxDTO(BaseModel):
     items: list[InboxItemDTO]
     counts: dict[str, int]
+
+
+class DraftDTO(BaseModel):
+    mail_id: str
+    sender: str
+    subject: str
+    body: str
+    created_ts: str
+
+
+class ReclassifyRequest(BaseModel):
+    category: Literal["urgent", "action", "info", "newsletter", "spam"]
+
+
+class EchoRequest(BaseModel):
+    utterance: str
+
+
+class EchoResponseDTO(BaseModel):
+    heard: str
+    wake_detected: bool
+    intent: str
+    routed_to: str | None
+    response: str
+    spoke: bool
 
 
 class BriefingDTO(BaseModel):

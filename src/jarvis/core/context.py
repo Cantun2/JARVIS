@@ -20,6 +20,8 @@ if TYPE_CHECKING:  # imports uniquement pour le typage — pas de couplage runti
     from jarvis.inference.gateway import InferenceGateway
     from jarvis.io.mail import MailSource
     from jarvis.io.telegram import TelegramNotifier
+    from jarvis.io.voice import VoiceIO
+    from jarvis.mail.store import MailMemory
     from jarvis.night.store import TaskStore
 
 EmitFn = Callable[[EventType, dict[str, Any]], Awaitable[int]]
@@ -60,7 +62,9 @@ class AgentContext:
     desktop: DesktopController | None = None
     telegram: TelegramNotifier | None = None
     mail: MailSource | None = None
+    voice: VoiceIO | None = None
     tasks: TaskStore | None = None  # service d'état (non gaté par permission)
+    mail_memory: MailMemory | None = None  # état local (drafts + règles apprises), non gaté
     trigger_fn: TriggerFn | None = None
 
     async def emit(self, type: EventType, **payload: Any) -> int:
@@ -86,6 +90,16 @@ class AgentContext:
         if self.mail is None:
             raise PermissionDenied(f"{self.agent_name}: MAIL_READ non accordée")
         return self.mail
+
+    def require_voice(self) -> VoiceIO:
+        if self.voice is None:
+            raise PermissionDenied(f"{self.agent_name}: VOICE_IO non accordée")
+        return self.voice
+
+    def require_mail_memory(self) -> MailMemory:
+        if self.mail_memory is None:
+            raise RuntimeError(f"{self.agent_name}: mémoire mail indisponible")
+        return self.mail_memory
 
     def require_tasks(self) -> TaskStore:
         if self.tasks is None:

@@ -150,17 +150,83 @@ async def run_demo_phase3() -> int:
         print(f"    ⚠ {blocker}")
 
     types = [e.type for e in ctx.journal.replay()]
-    ok = (
-        ET.BACKLOG_READY in types
-        and types.index(ET.BACKLOG_READY)
-        < types.index(ET.TASK_TRANSITIONED)
-        < types.index(ET.NIGHT_REPORT_READY)
-    )
+    ok = ET.BACKLOG_READY in types and types.index(ET.BACKLOG_READY) < types.index(
+        ET.TASK_TRANSITIONED
+    ) < types.index(ET.NIGHT_REPORT_READY)
     print()
     if ok:
         print(_c("✓ Nuit dry-run cohérente (VULCAN resté désarmé). Démo OK.", "\033[92m"))
     else:
         print(_c("✗ Séquence nocturne incohérente.", "\033[91m"))
+    ctx.close()
+    return 0 if ok else 1
+
+
+async def run_demo_phase4() -> int:
+    from jarvis.agents.echo import EchoInput, EchoOutput
+    from jarvis.agents.hermes import HermesInput, HermesOutput
+    from jarvis.core.events import EventType as ET
+    from jarvis.io.voice import MockSTT, MockTTS
+
+    ctx = build_context(Settings(mode="mock", db_path=":memory:"))
+    _banner("JARVIS · Démo Phase 4 · Les sens (ECHO + HERMES v2) · MOCK")
+
+    # 1. Commande vocale : « Jarvis, fais-moi le briefing » → ORACLE → briefing parlé.
+    said = await ctx.runner.run_by_name(
+        "ECHO", EchoInput(utterance="Jarvis, fais-moi le briefing du jour")
+    )
+    assert isinstance(said, EchoOutput)
+
+    # 2. Règle apprise : la newsletter TechCrunch (normalement « newsletter ») est
+    #    reclassée « urgent » par l'utilisateur → HERMES l'applique au prochain tri.
+    ctx.mail_memory.set_override("newsletter@techcrunch.com", "urgent")
+    triaged = await ctx.runner.run_by_name("HERMES", HermesInput())
+    assert isinstance(triaged, HermesOutput)
+    await ctx.bus.drain()
+
+    print(_c("\n»  Commande vocale (ECHO)\n", "\033[1m"))
+    print(f"    entendu : « {said.heard} »")
+    print(f"    routé vers {said.routed_to} · parlé={said.spoke}")
+    print(f"    réponse : {said.response[:80]}…")
+
+    assert isinstance(ctx.voice.tts, MockTTS)
+    assert isinstance(ctx.voice.stt, MockSTT)
+    print(_c("\n»  Voix synthétisée (MockTTS — aucun son émis)\n", "\033[1m"))
+    for clip in ctx.voice.tts.clips:
+        print(f"    🔊 [{clip.backend}] {clip.text[:70]}…")
+
+    print(_c("\n»  Tri HERMES v2 (règle apprise + brouillons)\n", "\033[1m"))
+    drafted = 0
+    for item in triaged.triaged:
+        flag = "✎ brouillon" if item.draft else ""
+        print(f"    [{item.category:<10}] {item.subject[:44]:<44} {flag}")
+        drafted += 1 if item.draft else 0
+
+    print(_c("\n»  Brouillons enregistrés (jamais envoyés)\n", "\033[1m"))
+    for draft in ctx.mail_memory.list_drafts():
+        print(f"    → {draft.subject[:50]} ({len(draft.body)} car.)")
+
+    types = [e.type for e in ctx.journal.replay()]
+    spoke_ok = ET.VOICE_HEARD in types and ET.VOICE_SPOKE in types
+    seq_ok = types.index(ET.VOICE_HEARD) < types.index(ET.BRIEFING_READY)
+    draft_ok = ET.MAIL_DRAFTED in types and drafted > 0
+    # Garde-fou : HERMES ne demande jamais MAIL_SEND ; VULCAN reste désarmé.
+    from jarvis.core.contracts import Permission
+
+    no_send = all(Permission.MAIL_SEND not in c.permissions for c in ctx.registry.contracts())
+    vulcan_disarmed = not ctx.registry.get("VULCAN").contract.enabled
+    ok = spoke_ok and seq_ok and draft_ok and no_send and vulcan_disarmed
+
+    print()
+    if ok:
+        print(
+            _c(
+                "✓ ECHO parle, HERMES v2 apprend + rédige (0 envoi, VULCAN désarmé). Démo OK.",
+                "\033[92m",
+            )
+        )
+    else:
+        print(_c("✗ Séquence Phase 4 incohérente.", "\033[91m"))
     ctx.close()
     return 0 if ok else 1
 
@@ -171,6 +237,10 @@ def main() -> int:
 
 def main_phase3() -> int:
     return asyncio.run(run_demo_phase3())
+
+
+def main_phase4() -> int:
+    return asyncio.run(run_demo_phase4())
 
 
 if __name__ == "__main__":

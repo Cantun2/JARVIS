@@ -5,8 +5,11 @@
 import type {
   Agent,
   CreateProjectResponse,
+  Draft,
+  EchoReply,
   EventsResponse,
   Health,
+  InboxResponse,
   NightReport,
   Project,
   RunAgentResponse,
@@ -122,4 +125,37 @@ export function runNight(projectId: string): Promise<NightReport> {
 /** GET /api/night/report — dernier rapport de nuit ou null. */
 export function getNightReport(): Promise<NightReport | null> {
   return getJson<NightReport | null>("/api/night/report");
+}
+
+// --- Phase 4 — Les sens (ECHO / Inbox v2) ------------------------------------
+
+/** POST /api/echo/say — envoie une commande « parlée » à ECHO. */
+export function sayToEcho(utterance: string): Promise<EchoReply> {
+  return getJson<EchoReply>("/api/echo/say", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ utterance }),
+  });
+}
+
+/** GET /api/inbox — boîte enrichie (brouillon + drapeau correction). */
+export function getInbox(): Promise<InboxResponse> {
+  return getJson<InboxResponse>("/api/inbox");
+}
+
+/** POST /api/inbox/{id}/reclassify — corrige la catégorie (devient une règle apprise). */
+export async function reclassifyMail(id: string, category: string): Promise<void> {
+  await getJson<Record<string, string>>(
+    `/api/inbox/${encodeURIComponent(id)}/reclassify`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ category }),
+    },
+  );
+}
+
+/** GET /api/inbox/drafts — brouillons de réponse (jamais envoyés). */
+export function getDrafts(): Promise<Draft[]> {
+  return getJson<Draft[]>("/api/inbox/drafts");
 }

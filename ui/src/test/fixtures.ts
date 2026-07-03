@@ -116,6 +116,52 @@ export function makeNightReport(overrides: Partial<NightReport> = {}): NightRepo
   };
 }
 
+/** Fabrique un événement `voice.heard` (ECHO a entendu une commande). */
+export function makeVoiceHeard(
+  payload: { transcript?: string; wake?: boolean; command?: string },
+  overrides: Partial<SeqEvent> = {},
+): SeqEvent {
+  return makeEvent({
+    type: "voice.heard",
+    source: "ECHO",
+    payload: {
+      transcript: payload.transcript ?? "",
+      wake: payload.wake ?? true,
+      command: payload.command ?? "",
+    },
+    ...overrides,
+  });
+}
+
+/** Fabrique un événement `voice.spoke` (réponse parlée de JARVIS). */
+export function makeVoiceSpoke(
+  payload: { text?: string; intent?: string; routed_to?: string | null },
+  overrides: Partial<SeqEvent> = {},
+): SeqEvent {
+  return makeEvent({
+    type: "voice.spoke",
+    source: "ECHO",
+    payload: {
+      text: payload.text ?? "",
+      intent: payload.intent ?? "chat",
+      routed_to: payload.routed_to ?? null,
+    },
+    ...overrides,
+  });
+}
+
+/** Fabrique un brouillon (GET /api/inbox/drafts). */
+export function makeDraft(overrides: Partial<import("../lib/types").Draft> = {}) {
+  return {
+    mail_id: "m1",
+    sender: "a@x.com",
+    subject: "Sujet",
+    body: "Bonjour,\n\nMerci pour votre message.",
+    created_ts: "2026-07-01T08:00:00.000Z",
+    ...overrides,
+  };
+}
+
 /** Fabrique un événement `briefing.ready` (sections optionnelles). */
 export function makeBriefing(
   payload: {

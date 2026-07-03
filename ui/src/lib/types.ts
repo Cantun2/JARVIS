@@ -19,6 +19,10 @@ export type EventType =
   | "permission.denied"
   | "budget.exceeded"
   | "system.health"
+  | "voice.heard"
+  | "voice.spoke"
+  | "mail.drafted"
+  | "mail.reclassified"
   | "notification";
 
 /** Événement immuable diffusé sur le bus / REST / WebSocket. */
@@ -158,3 +162,46 @@ export interface CreateProjectResponse {
 
 /** Action de transition applicable à une tâche. */
 export type TaskAction = "approve" | "reject" | "retry";
+
+// --- Phase 4 — Les sens (ECHO / brouillons) ----------------------------------
+// Miroir TS du contrat de câble voix + mail enrichi.
+
+/** POST /api/echo/say -> réponse d'ECHO (transcription + intent + réponse). */
+export interface EchoReply {
+  heard: string;
+  wake_detected: boolean;
+  intent: string;
+  routed_to: string | null;
+  response: string;
+  spoke: boolean;
+}
+
+/** GET /api/inbox/drafts -> brouillon de réponse préparé pour un mail. */
+export interface Draft {
+  mail_id: string;
+  sender: string;
+  subject: string;
+  body: string;
+  created_ts: string;
+}
+
+/** Catégories de tri d'un mail (contrat POST /api/inbox/{id}/reclassify). */
+export type MailCategory = "urgent" | "action" | "info" | "newsletter" | "spam";
+
+/** Item enrichi de GET /api/inbox (contient brouillon + drapeau correction). */
+export interface InboxItemDTO {
+  id: string;
+  sender: string;
+  subject: string;
+  category: string;
+  priority: number;
+  summary: string;
+  draft: string | null;
+  corrected: boolean;
+}
+
+/** GET /api/inbox -> liste enrichie + compteurs par catégorie. */
+export interface InboxResponse {
+  items: InboxItemDTO[];
+  counts: Record<string, number>;
+}

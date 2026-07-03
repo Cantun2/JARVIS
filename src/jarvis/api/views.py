@@ -8,6 +8,7 @@ from typing import Any
 from jarvis.api.schemas import (
     AgentDTO,
     BriefingDTO,
+    DraftDTO,
     EventDTO,
     InboxDTO,
     InboxItemDTO,
@@ -68,22 +69,44 @@ def build_snapshot(ctx: JarvisContext, *, recent: int = 100) -> dict[str, Any]:
 
 
 def latest_inbox_dto(ctx: JarvisContext) -> InboxDTO:
-    """Dernier triage HERMES, dérivé du journal (dédup par id, tri par priorité)."""
+    """Dernier triage HERMES, dérivé du journal (dédup par id, tri par priorité).
+
+    Enrichi par la mémoire mail : brouillon éventuel + drapeau `corrected` (l'expéditeur
+    a été reclassé manuellement → une règle apprise s'applique).
+    """
+    overrides = ctx.mail_memory.overrides()
     by_id: dict[str, InboxItemDTO] = {}
     for event in ctx.journal.replay(types=[EventType.MAIL_TRIAGED]):
         p = event.payload
         mail_id = str(p.get("id", ""))
+        sender = str(p.get("sender", ""))
+        draft = ctx.mail_memory.get_draft(mail_id)
         by_id[mail_id] = InboxItemDTO(
             id=mail_id,
-            sender=str(p.get("sender", "")),
+            sender=sender,
             subject=str(p.get("subject", "")),
             category=str(p.get("category", "")),
             priority=int(p.get("priority", 0)),
             summary=str(p.get("summary", "")),
+            draft=draft.body if draft is not None else None,
+            corrected=sender in overrides,
         )
     items = sorted(by_id.values(), key=lambda i: i.priority, reverse=True)
     counts = dict(Counter(i.category for i in items))
     return InboxDTO(items=items, counts=counts)
+
+
+def drafts_dtos(ctx: JarvisContext) -> list[DraftDTO]:
+    return [
+        DraftDTO(
+            mail_id=d.mail_id,
+            sender=d.sender,
+            subject=d.subject,
+            body=d.body,
+            created_ts=d.created_ts,
+        )
+        for d in ctx.mail_memory.list_drafts()
+    ]
 
 
 def latest_briefing_dto(ctx: JarvisContext) -> BriefingDTO | None:

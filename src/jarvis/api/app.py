@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from jarvis import __version__
-from jarvis.api import routes_agents, routes_events, routes_projects
+from jarvis.api import routes_agents, routes_events, routes_projects, routes_voice
 from jarvis.api.ws import WsHub, websocket_endpoint
 from jarvis.assembly import JarvisContext, build_context
 from jarvis.logging import get_logger
@@ -58,5 +58,6 @@ def create_app(context: JarvisContext | None = None) -> FastAPI:
     app.include_router(routes_agents.router, prefix="/api")
     app.include_router(routes_events.router, prefix="/api")
     app.include_router(routes_projects.router, prefix="/api")
+    app.include_router(routes_voice.router, prefix="/api")
     app.add_api_websocket_route("/ws", websocket_endpoint)
     return app

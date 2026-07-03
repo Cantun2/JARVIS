@@ -45,7 +45,7 @@ class Oracle(JarvisAgent):
     contract = AgentContract(
         name="ORACLE",
         mode="scheduled",
-        permissions=(Permission.NOTIFY_TELEGRAM,),
+        permissions=(Permission.NOTIFY_TELEGRAM, Permission.VOICE_IO),
         inputs=OracleInput,
         outputs=OracleOutput,
     )
@@ -88,4 +88,8 @@ class Oracle(JarvisAgent):
         text = " ".join(lines)
         await ctx.emit(EventType.BRIEFING_READY, text=text, sections=sections)
         await ctx.require_telegram().notify(text, level="info")
+        # Briefing parlé (best-effort) : mock = enregistré ; réel = Piper. Ne bloque rien.
+        if ctx.voice is not None:
+            await ctx.voice.speak(text)
+            await ctx.emit(EventType.VOICE_SPOKE, text=text, intent="briefing", routed_to="ORACLE")
         return OracleOutput(text=text, sections=sections)

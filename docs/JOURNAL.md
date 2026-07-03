@@ -1,5 +1,41 @@
 # JOURNAL de bord
 
+## Session 4 — 2026-07-03 — Phase 4 : Les sens (ECHO + HERMES v2)
+
+**Objectif.** Donner l'ouïe et la parole à JARVIS (ECHO), et rendre HERMES utile (brouillons +
+apprentissage), sans armer VULCAN ni jamais envoyer de mail. Décisions : ECHO + HERMES v2 (QUARTERMASTER
+reporté) ; voix mock-first + adaptateurs réels ; nouvel onglet Chat JARVIS.
+
+**Fait.**
+- **I/O Voix** (`io/voice.py`) : Protocols `SpeechToText`/`TextToSpeech` + `VoiceIO` (wake-word), backends
+  Mock (déterministes, muets) + adaptateurs réels `WhisperSTT`/`PiperTTS` (imports paresseux, moteur
+  injectable). `build_voice`, config `JARVIS_VOICE_BACKEND`/`JARVIS_WAKE_WORD`/paths. Permission `VOICE_IO`
+  gatée dans `AgentContext.voice` + orchestrateur + assembly.
+- **ECHO** (`agents/echo.py`, `continuous`) : détecte le wake-word, route l'intention (nuit→store,
+  mails→HERMES, briefing→ORACLE ; free-form→gateway best-effort) via `ctx.trigger`, puis parle. Émet
+  `voice.heard`/`voice.spoke`. Enregistré dans `default_agents()`.
+- **ORACLE parlé** : gagne `VOICE_IO`, prononce le briefing (best-effort) + `voice.spoke`.
+- **HERMES v2** : store `mail/store.py::MailMemory` (drafts + overrides), injecté non gaté
+  (`ctx.mail_memory`). `classify(mail, overrides)` applique les règles apprises ; brouillons `action`/`urgent`
+  si `MAIL_DRAFT` accordée (best-effort + repli déterministe), persistés + `mail.drafted`. **Jamais d'envoi**
+  (`MAIL_SEND` toujours interdite).
+- **API** : `routes_voice.py` (POST /api/echo/say, POST /api/inbox/{id}/reclassify, GET /api/inbox/drafts) +
+  DTO enrichis (draft/corrected) + vues + include_router.
+- **UI Chat JARVIS** : onglet + `ChatPanel` (transcript voix, champ commande, bouton micro mock, chip agent
+  routé, indicateur « 🔊 parlé »), sélecteur pur `lib/chat.ts`. **Inbox v2** : brouillon dépliable +
+  correction de classement en un clic (`reclassifyMail`) + badge « corrigé » (enrichissement via GET
+  /api/inbox). `make demo-phase4`. Docs ADR-12/13.
+
+**Validation.** `make check` vert : ruff clean, **mypy strict 66 fichiers**, **156 tests pytest**,
+**62 tests vitest**. `make demo-phase4` cohérent (commande vocale → briefing parlé, tri avec règle apprise +
+brouillons, 0 envoi, VULCAN désarmé).
+
+**Décisions.** ADR-12 (voix locale + `VOICE_IO`), ADR-13 (HERMES v2 : brouillons jamais envoyés +
+apprentissage local par overrides).
+
+**Prochaine étape.** QUARTERMASTER + dashboard télémétrie (Phase 4 item 15), wake-word streaming réel, ou
+armement progressif de VULCAN sous garde-fous SENTINEL.
+
 ## Session 3 — 2026-07-02 — Phase 3 : La nuit (DAEDALUS + Mission Control, dry-run)
 
 **Objectif.** Workflow nocturne sans armer VULCAN : DAEDALUS (objectif→backlog), Night Report structuré,
