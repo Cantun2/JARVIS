@@ -11,6 +11,10 @@ export interface InboxItem {
   summary: string;
   subject: string;
   sender: string;
+  // Enrichis par GET /api/inbox (les événements `mail.triaged` ne portent pas le
+  // corps du brouillon ni le drapeau de correction — voir InboxPanel).
+  draft?: string | null;
+  corrected?: boolean;
 }
 
 /** Lecture défensive d'un champ string du payload. */

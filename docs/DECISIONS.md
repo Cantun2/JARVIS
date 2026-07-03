@@ -93,6 +93,34 @@ qui monkeypatche `subprocess`/`os.system`/`create_subprocess_exec`). DAEDALUS (p
 **Conséquences.** Toute la structure (backlog, cycle de vie, Night Report, Mission Control) est prête ;
 VULCAN réel (worktrees + `claude -p`) la pilotera plus tard, après armement manuel explicite.
 
+## ADR-12 — Voix (ECHO) locale, mock-first, gatée par une permission dédiée
+**Contexte.** Phase 4 « Les sens » : JARVIS doit entendre (STT) et parler (TTS), sur une machine CPU sans
+GPU ni micro garanti, sans clé cloud.
+**Décision.** `io/voice.py` sur le moule de `io/mail.py` : Protocols `SpeechToText`/`TextToSpeech` +
+`VoiceIO` (wake-word « jarvis »). Backends **Mock** par défaut (déterministes, hors-ligne, aucun son) ;
+adaptateurs **réels** `WhisperSTT` (faster-whisper) / `PiperTTS` (piper) en **imports paresseux, moteur
+injectable**, construits seulement en `mode=real` + `JARVIS_VOICE_BACKEND=real`. La voix est **locale
+uniquement** (aucun audio au cloud) et gatée par une nouvelle `Permission.VOICE_IO` (comme
+`NOTIFY_TELEGRAM`) : injectée dans `AgentContext.voice` seulement si accordée. ECHO (`agents/echo.py`,
+`mode=continuous`) détecte le wake-word, route l'intention (déterministe : nuit→store, mails→HERMES,
+briefing→ORACLE ; free-form→gateway best-effort) via `ctx.trigger`, puis parle. ORACLE gagne `VOICE_IO` et
+prononce le briefing (best-effort).
+**Conséquences.** Tout testable en mock (STT/TTS injectés) ; le réel se branche via `MANUAL_SETUP` sans
+toucher le Core. ECHO n'a aucune I/O dangereuse propre — il ne fait que déclencher d'autres agents.
+
+## ADR-13 — HERMES v2 : brouillons jamais envoyés + apprentissage local par overrides
+**Contexte.** Rendre HERMES utile (rédaction) et personnalisable (corriger un classement), sans jamais
+envoyer de mail.
+**Décision.** Nouveau store `mail/store.py::MailMemory` (SQLite, tables `drafts`/`overrides`), injecté comme
+service d'état **non gaté** `AgentContext.mail_memory` (comme `tasks`). (1) **Brouillons** : pour les mails
+`action`/`urgent`, et **seulement** si `MAIL_DRAFT` est accordée, HERMES rédige un brouillon (gateway
+best-effort, repli gabarit déterministe), le persiste et émet `mail.drafted`. `MAIL_SEND` reste dans
+`DEFAULT_DENIED` : **aucun canal d'envoi n'existe**. (2) **Apprentissage** : `classify(mail, overrides)`
+consulte d'abord les règles apprises (expéditeur → catégorie) ; l'UI corrige via
+`POST /api/inbox/{id}/reclassify` → `set_override` + `mail.reclassified`. Le prochain tri applique la règle.
+**Conséquences.** L'utilisateur contrôle la classification (dataset local) ; les brouillons sont relisibles
+dans l'UI (dépli) mais jamais expédiés. Garde-fou vérifié par test (`MAIL_SEND` absente du contrat).
+
 ## ADR-7 — VULCAN livré désarmé
 **Contexte.** Le Night Shift est le module le plus puissant et le plus dangereux.
 **Décision.** VULCAN est livré `enabled=False`. L'`AgentRunner` refuse tout agent désarmé (`AgentDisarmed`) ;

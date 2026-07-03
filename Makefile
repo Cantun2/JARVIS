@@ -5,7 +5,7 @@ SHELL := /bin/bash
 PY := $(shell [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3)
 PIP := $(PY) -m pip
 
-.PHONY: help install check fmt lint type test test-py test-ui demo demo-phase1 demo-phase3 doctor serve ui-dev clean
+.PHONY: help install check fmt lint type test test-py test-ui demo demo-phase1 demo-phase3 demo-phase4 doctor serve ui-dev clean
 
 help: ## Affiche cette aide
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \

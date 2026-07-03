@@ -44,8 +44,25 @@ def _fallback_summary(mail: Mail) -> str:
     return text[:117] + "…" if len(text) > 120 else text
 
 
-def classify(mail: Mail) -> tuple[str, int]:
-    """Retourne (catégorie, priorité). Déterministe."""
+def _fallback_draft(mail: Mail) -> str:
+    """Brouillon déterministe sans modèle (accusé de réception poli)."""
+    subject = " ".join(mail.subject.split()) or "votre message"
+    return (
+        f"Bonjour,\n\nMerci pour « {subject} ». Je reviens vers vous rapidement.\n\n"
+        "Bien cordialement,\nQuentin"
+    )
+
+
+def classify(mail: Mail, overrides: dict[str, str] | None = None) -> tuple[str, int]:
+    """Retourne (catégorie, priorité). Déterministe.
+
+    Les règles **apprises** (`overrides` : expéditeur → catégorie, corrigées par
+    l'utilisateur dans l'UI) priment sur les règles par défaut.
+    """
+    if overrides and mail.sender in overrides:
+        category = overrides[mail.sender]
+        return category, CATEGORY_PRIORITY.get(category, CATEGORY_PRIORITY["info"])
+
     text = f"{mail.subject}\n{mail.body}".lower()
     sender = mail.sender.lower()
 
@@ -84,7 +101,7 @@ class Hermes(JarvisAgent):
     contract = AgentContract(
         name="HERMES",
         mode="scheduled",
-        permissions=(Permission.MAIL_READ, Permission.NET_CLOUD_INFERENCE),
+        permissions=(Permission.MAIL_READ, Permission.MAIL_DRAFT, Permission.NET_CLOUD_INFERENCE),
         budget=Budget(max_tokens_day=50_000, max_runtime_min=2),
         inputs=HermesInput,
         outputs=HermesOutput,
@@ -97,6 +114,9 @@ class Hermes(JarvisAgent):
         assert isinstance(data, HermesInput)
         gateway = ctx.require_gateway()
         mails = await ctx.require_mail().fetch(limit=data.limit)
+        # Règles apprises (corrections utilisateur) — priment sur la classification par défaut.
+        overrides = ctx.mail_memory.overrides() if ctx.mail_memory else {}
+        can_draft = Permission.MAIL_DRAFT in ctx.granted
         triaged: list[TriagedMail] = []
 
         for mail in mails:
@@ -106,8 +126,9 @@ class Hermes(JarvisAgent):
                 sender=mail.sender,
                 subject=mail.subject,
             )
-            category, priority = classify(mail)
+            category, priority = classify(mail, overrides)
             summary = await self._summarize(gateway, mail, ctx)
+            draft = await self._maybe_draft(gateway, mail, category, ctx) if can_draft else None
             item = TriagedMail(
                 id=mail.id,
                 sender=mail.sender,
@@ -115,6 +136,7 @@ class Hermes(JarvisAgent):
                 category=category,
                 priority=priority,
                 summary=summary,
+                draft=draft,
             )
             triaged.append(item)
             await ctx.emit(
@@ -125,6 +147,7 @@ class Hermes(JarvisAgent):
                 category=category,
                 priority=priority,
                 summary=summary,
+                has_draft=draft is not None,
             )
 
         triaged.sort(key=lambda m: m.priority, reverse=True)
@@ -146,3 +169,34 @@ class Hermes(JarvisAgent):
             return _fallback_summary(mail)
         ctx.budget.charge(tokens=resp.usage.total_tokens)
         return resp.text.strip() or _fallback_summary(mail)
+
+    async def _maybe_draft(
+        self, gateway: InferenceGateway, mail: Mail, category: str, ctx: AgentContext
+    ) -> str | None:
+        """Rédige un brouillon de réponse (mails « action »/« urgent »). JAMAIS envoyé.
+
+        Best-effort via le modèle, repli sur un gabarit déterministe. Persisté dans la
+        mémoire mail (relecture UI) ; aucun canal d'envoi n'existe (`MAIL_SEND` interdite).
+        """
+        if category not in ("action", "urgent"):
+            return None
+        prompt = (
+            f"Rédige un brouillon de réponse poli et bref (français) au mail suivant, "
+            f"sans l'envoyer. Objet: {mail.subject}. Contenu: {mail.body[:200]}"
+        )
+        body = _fallback_draft(mail)
+        try:
+            resp = await asyncio.wait_for(
+                gateway.complete(
+                    [ChatMessage(role="user", content=prompt)], tier="cloud", max_tokens=180
+                ),
+                timeout=self._summary_timeout,
+            )
+            ctx.budget.charge(tokens=resp.usage.total_tokens)
+            body = resp.text.strip() or body
+        except Exception:
+            body = _fallback_draft(mail)
+        if ctx.mail_memory is not None:
+            ctx.mail_memory.save_draft(mail.id, mail.sender, mail.subject, body)
+        await ctx.emit(EventType.MAIL_DRAFTED, id=mail.id, sender=mail.sender, subject=mail.subject)
+        return body

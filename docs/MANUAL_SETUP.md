@@ -62,6 +62,19 @@ En mock, rien n'est nécessaire. Sur cette machine (CPU, pas de clé Anthropic) 
 - [ ] Installer : `sudo apt install libwebkit2gtk-4.1-dev build-essential curl libssl-dev` + Rust.
 - [ ] `cd ui && npm run tauri build` (scaffold présent dans `ui/src-tauri/`).
 
+## 5b. Voix (ECHO) réelle — faster-whisper (STT) + Piper (TTS), 100% local
+Tout fonctionne en **mock** par défaut (aucun son, aucun matériel). Pour la voix réelle :
+- [ ] Installer les libs (CPU) : `pip install faster-whisper piper-tts`. Optionnel :
+  `sudo apt install portaudio19-dev` pour la capture micro.
+- [ ] Télécharger un modèle **whisper** (ex. `small`/`base`, format CTranslate2) et une **voix Piper**
+  française (ex. `fr_FR-siwis-medium.onnx` + `.json`) dans `models/`.
+- [ ] Dans `.env` : `JARVIS_MODE=real`, `JARVIS_VOICE_BACKEND=real`,
+  `JARVIS_WHISPER_MODEL_PATH=models/whisper-small`, `JARVIS_PIPER_VOICE_PATH=models/fr_FR-siwis-medium.onnx`.
+- [ ] Le wake-word par défaut est `jarvis` (`JARVIS_WAKE_WORD`). Sur CPU la latence STT/TTS est réelle :
+  ECHO retombe sur un repli déterministe si le modèle est lent/absent — rien ne bloque.
+- [ ] Vérifier via l'onglet **Chat JARVIS** : taper « Jarvis, fais-moi le briefing » → ORACLE répond et le
+  briefing est prononcé. La capture micro continue (hotword streaming) est différée (Phase 5).
+
 ## 6. VULCAN (Night Shift) — activation **manuelle** après branchement
 - [ ] Installer la CLI Claude Code (`claude`) pour les sessions headless.
 - [ ] N'activer qu'après revue : passer `Vulcan.contract.enabled=True` de façon contrôlée + config

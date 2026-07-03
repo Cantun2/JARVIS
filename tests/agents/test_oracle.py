@@ -31,6 +31,18 @@ async def test_oracle_notifies_telegram(ctx: JarvisContext) -> None:
     assert ctx.telegram.sent[0].level == "info"
 
 
+async def test_oracle_speaks_briefing(ctx: JarvisContext) -> None:
+    from jarvis.io.voice import MockTTS
+
+    out = await ctx.runner.run(Oracle(), OracleInput())
+    assert isinstance(out, OracleOutput)
+    assert isinstance(ctx.voice.tts, MockTTS)
+    assert ctx.voice.tts.clips  # briefing parlé (best-effort)
+    assert ctx.voice.tts.clips[-1].text == out.text
+    spoke = ctx.journal.replay(types=[EventType.VOICE_SPOKE])
+    assert spoke and spoke[-1].payload["routed_to"] == "ORACLE"
+
+
 async def test_oracle_uses_stored_night_report(ctx: JarvisContext) -> None:
     from jarvis.night.manager import NightShiftManager
     from jarvis.night.models import TaskDraft

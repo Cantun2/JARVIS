@@ -14,6 +14,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 Mode = Literal["mock", "real"]
 DesktopBackend = Literal["mock", "gnome"]
 MailBackend = Literal["mock", "gmail"]
+VoiceBackend = Literal["mock", "real"]
 
 
 class Settings(BaseSettings):
@@ -56,6 +57,12 @@ class Settings(BaseSettings):
 
     # Desktop
     desktop_backend: DesktopBackend = Field(default="mock", alias="JARVIS_DESKTOP_BACKEND")
+
+    # Voix (ECHO) : mock par défaut ; real = faster-whisper (STT) + Piper (TTS), locaux
+    voice_backend: VoiceBackend = Field(default="mock", alias="JARVIS_VOICE_BACKEND")
+    wake_word: str = Field(default="jarvis", alias="JARVIS_WAKE_WORD")
+    whisper_model_path: str | None = Field(default=None, alias="JARVIS_WHISPER_MODEL_PATH")
+    piper_voice_path: str | None = Field(default=None, alias="JARVIS_PIPER_VOICE_PATH")
 
     # Night Shift (VULCAN désarmé : simulation dry-run uniquement)
     night_shift_enabled: bool = Field(default=False, alias="JARVIS_NIGHT_SHIFT_ENABLED")

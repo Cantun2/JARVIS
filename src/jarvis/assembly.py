@@ -21,6 +21,8 @@ from jarvis.inference.factory import build_gateway
 from jarvis.inference.gateway import InferenceGateway
 from jarvis.io.mail import MailSource, build_mail
 from jarvis.io.telegram import TelegramNotifier, build_telegram
+from jarvis.io.voice import VoiceIO, build_voice
+from jarvis.mail.store import MailMemory
 from jarvis.night.store import TaskStore
 
 
@@ -36,11 +38,14 @@ class JarvisContext:
     desktop: DesktopController
     telegram: TelegramNotifier
     mail: MailSource
+    voice: VoiceIO
     tasks: TaskStore
+    mail_memory: MailMemory
 
     def close(self) -> None:
         self.journal.close()
         self.tasks.close()
+        self.mail_memory.close()
 
 
 def build_context(settings: Settings | None = None) -> JarvisContext:
@@ -52,7 +57,9 @@ def build_context(settings: Settings | None = None) -> JarvisContext:
     desktop = build_desktop(settings)
     telegram = build_telegram(settings)
     mail = build_mail(settings)
+    voice = build_voice(settings)
     tasks = TaskStore(settings.db_path)
+    mail_memory = MailMemory(settings.db_path)
     registry = AgentRegistry()
     runner = AgentRunner(
         bus,
@@ -62,7 +69,9 @@ def build_context(settings: Settings | None = None) -> JarvisContext:
         desktop=desktop,
         telegram=telegram,
         mail=mail,
+        voice=voice,
         tasks=tasks,
+        mail_memory=mail_memory,
     )
     for agent in default_agents():
         registry.register(agent)
@@ -77,5 +86,7 @@ def build_context(settings: Settings | None = None) -> JarvisContext:
         desktop=desktop,
         telegram=telegram,
         mail=mail,
+        voice=voice,
         tasks=tasks,
+        mail_memory=mail_memory,
     )
