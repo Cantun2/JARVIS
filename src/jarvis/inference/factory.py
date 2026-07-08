@@ -37,4 +37,7 @@ def build_backend(settings: Settings) -> InferenceBackend:
 
 
 def build_gateway(settings: Settings) -> InferenceGateway:
-    return InferenceGateway(build_backend(settings))
+    # Routage par tier : tâches rapides (local) sur le petit modèle, experts (cloud) sur le
+    # gros modèle. Le backend Ollama sert les deux ; une clé cloud future irait vers Claude.
+    tier_models = {"local": settings.local_model, "cloud": settings.expert_model}
+    return InferenceGateway(build_backend(settings), tier_models=tier_models)

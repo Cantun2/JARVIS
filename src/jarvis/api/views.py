@@ -8,6 +8,9 @@ from typing import Any
 from jarvis.api.schemas import (
     AgentDTO,
     BriefingDTO,
+    ChatHistoryDTO,
+    ChatMessageDTO,
+    ConversationDTO,
     DraftDTO,
     EventDTO,
     InboxDTO,
@@ -17,10 +20,12 @@ from jarvis.api.schemas import (
     NightTaskDTO,
     ProjectDTO,
     TaskDTO,
+    TodoDTO,
 )
 from jarvis.assembly import JarvisContext
 from jarvis.core.events import EventType
 from jarvis.night.models import NightReport, Project, Task
+from jarvis.todo.models import Todo
 
 
 def agent_dtos(ctx: JarvisContext) -> list[AgentDTO]:
@@ -46,11 +51,31 @@ def agent_dtos(ctx: JarvisContext) -> list[AgentDTO]:
                 mode=contract.mode,
                 permissions=[p.value for p in contract.permissions],
                 enabled=contract.enabled,
+                conversational=contract.conversational,
                 status=run["status"] if run else "idle",
                 last_run=last,
             )
         )
     return out
+
+
+def chat_history_dto(ctx: JarvisContext, conversation_id: str) -> ChatHistoryDTO | None:
+    store = ctx.conversations
+    conv = store.get(conversation_id)
+    if conv is None:
+        return None
+    messages = [
+        ChatMessageDTO(role=m.role, text=m.content, created_ts=m.created_ts)
+        for m in store.history(conversation_id, limit=200)
+    ]
+    return ChatHistoryDTO(conversation_id=conv.id, agent=conv.agent, messages=messages)
+
+
+def conversation_dtos(ctx: JarvisContext, agent: str | None = None) -> list[ConversationDTO]:
+    return [
+        ConversationDTO(id=c.id, agent=c.agent, title=c.title, updated_ts=c.updated_ts)
+        for c in ctx.conversations.list_conversations(agent)
+    ]
 
 
 def build_snapshot(ctx: JarvisContext, *, recent: int = 100) -> dict[str, Any]:
@@ -173,3 +198,24 @@ def night_report_dto(report: NightReport) -> NightReportDTO:
 def latest_night_report_dto(ctx: JarvisContext) -> NightReportDTO | None:
     report = ctx.tasks.latest_night_report()
     return night_report_dto(report) if report is not None else None
+
+
+def todo_dto(todo: Todo) -> TodoDTO:
+    return TodoDTO(
+        id=todo.id,
+        kind=todo.kind.value,
+        title=todo.title,
+        date=todo.date,
+        time=todo.time,
+        notes=todo.notes,
+        status=todo.status.value,
+        remind_lead_min=todo.remind_lead_min,
+        reminded_ts=todo.reminded_ts,
+        tags=list(todo.tags),
+        proposal=todo.proposal,
+        updated_ts=todo.updated_ts,
+    )
+
+
+def todo_dtos(todos: list[Todo]) -> list[TodoDTO]:
+    return [todo_dto(t) for t in todos]

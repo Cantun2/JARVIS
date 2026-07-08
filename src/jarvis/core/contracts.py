@@ -25,6 +25,7 @@ class Permission(StrEnum):
     FS_PROJECT_DIRS = "fs.project_dirs"
     SHELL_SANDBOXED = "shell.sandboxed"
     NET_CLOUD_INFERENCE = "net.cloud_inference"
+    NET_WEB = "net.web"  # recherche web (PHEME, CHRONOS)
     NOTIFY_TELEGRAM = "notify.telegram"
     VOICE_IO = "voice.io"
 
@@ -78,6 +79,7 @@ class AgentContract(BaseModel):
     inputs: type[AgentInput]
     outputs: type[AgentOutput]
     enabled: bool = True  # VULCAN est livré enabled=False (désarmé)
+    conversational: bool = False  # True = on DIALOGUE avec lui (chat) ; False = on le LANCE (tâche)
 
     def has(self, permission: Permission) -> bool:
         return permission in self.permissions

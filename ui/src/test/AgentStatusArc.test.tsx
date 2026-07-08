@@ -1,5 +1,5 @@
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import AgentStatusArc from "../components/AgentStatusArc";
 import { agentColor, overlayAgentStatus } from "../lib/theme";
 import { makeAgent, makeEvent } from "./fixtures";
@@ -69,6 +69,55 @@ describe("AgentStatusArc", () => {
     const dot = screen.getByTestId("agent-dot");
     expect(dot).toHaveAttribute("data-status", "failed");
     expect(dot).toHaveAttribute("data-color", "red");
+  });
+});
+
+describe("AgentStatusArc — clic (ouvrir chat vs lancer)", () => {
+  it("clic sur un agent conversationnel appelle onOpenChat avec son nom", () => {
+    const onOpenChat = vi.fn();
+    const onRunAgent = vi.fn();
+    render(
+      <AgentStatusArc
+        agents={[makeAgent({ name: "JARVIS", conversational: true })]}
+        onOpenChat={onOpenChat}
+        onRunAgent={onRunAgent}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("agent-dot"));
+    expect(onOpenChat).toHaveBeenCalledWith("JARVIS");
+    expect(onRunAgent).not.toHaveBeenCalled();
+  });
+
+  it("clic sur un agent de tâche appelle onRunAgent avec son nom", async () => {
+    const onOpenChat = vi.fn();
+    const onRunAgent = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AgentStatusArc
+        agents={[makeAgent({ name: "ATLAS", conversational: false })]}
+        onOpenChat={onOpenChat}
+        onRunAgent={onRunAgent}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("agent-dot"));
+    await waitFor(() => expect(onRunAgent).toHaveBeenCalledWith("ATLAS"));
+    expect(onOpenChat).not.toHaveBeenCalled();
+  });
+
+  it("un agent désactivé n'est pas cliquable", () => {
+    const onOpenChat = vi.fn();
+    const onRunAgent = vi.fn();
+    render(
+      <AgentStatusArc
+        agents={[makeAgent({ name: "VULCAN", enabled: false, conversational: false })]}
+        onOpenChat={onOpenChat}
+        onRunAgent={onRunAgent}
+      />,
+    );
+    const dot = screen.getByTestId("agent-dot");
+    expect(dot).toBeDisabled();
+    fireEvent.click(dot);
+    expect(onRunAgent).not.toHaveBeenCalled();
+    expect(onOpenChat).not.toHaveBeenCalled();
   });
 });
 

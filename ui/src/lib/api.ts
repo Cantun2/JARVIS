@@ -4,7 +4,11 @@
 // vers VITE_API_BASE. En build/prod (ou hors proxy), on préfixe par API_BASE.
 import type {
   Agent,
+  ChatHistory,
+  ChatReply,
+  Conversation,
   CreateProjectResponse,
+  CreateTodo,
   Draft,
   EchoReply,
   EventsResponse,
@@ -15,6 +19,9 @@ import type {
   RunAgentResponse,
   Task,
   TaskAction,
+  Todo,
+  TodoStatus,
+  UpdateTodo,
 } from "./types";
 
 /**
@@ -158,4 +165,83 @@ export async function reclassifyMail(id: string, category: string): Promise<void
 /** GET /api/inbox/drafts — brouillons de réponse (jamais envoyés). */
 export function getDrafts(): Promise<Draft[]> {
   return getJson<Draft[]>("/api/inbox/drafts");
+}
+
+// --- Chat multi-tours (agents conversationnels) ------------------------------
+
+/** POST /api/chat — envoie un message à un agent conversationnel. */
+export function postChat(
+  agent: string,
+  message: string,
+  conversationId?: string,
+  project?: string,
+): Promise<ChatReply> {
+  const body: Record<string, string> = { agent, message };
+  if (conversationId !== undefined) body.conversation_id = conversationId;
+  if (project !== undefined) body.project = project;
+  return getJson<ChatReply>("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+/** GET /api/chat/{conversation_id} — historique complet d'une conversation. */
+export function getChatHistory(conversationId: string): Promise<ChatHistory> {
+  return getJson<ChatHistory>(`/api/chat/${encodeURIComponent(conversationId)}`);
+}
+
+/** GET /api/conversations?agent=NAME — conversations (optionnellement filtrées par agent). */
+export function getConversations(agent?: string): Promise<Conversation[]> {
+  const qs = agent === undefined ? "" : `?${new URLSearchParams({ agent }).toString()}`;
+  return getJson<Conversation[]>(`/api/conversations${qs}`);
+}
+
+// --- Agenda (CHRONOS : todos / rendez-vous / rappels) ------------------------
+
+/** GET /api/todos?date=YYYY-MM-DD — éléments d'agenda d'un jour. */
+export function getTodos(date: string): Promise<Todo[]> {
+  const qs = new URLSearchParams({ date });
+  return getJson<Todo[]>(`/api/todos?${qs.toString()}`);
+}
+
+/** GET /api/todos/month?year=YYYY&month=M — éléments d'agenda d'un mois. */
+export function getTodosMonth(year: number, month: number): Promise<Todo[]> {
+  const qs = new URLSearchParams({ year: String(year), month: String(month) });
+  return getJson<Todo[]>(`/api/todos/month?${qs.toString()}`);
+}
+
+/** POST /api/todos — crée un élément d'agenda. */
+export function createTodo(body: CreateTodo): Promise<Todo> {
+  return getJson<Todo>("/api/todos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+/** PATCH /api/todos/{id} — modifie un élément d'agenda. */
+export function updateTodo(id: string, patch: UpdateTodo): Promise<Todo> {
+  return getJson<Todo>(`/api/todos/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(patch),
+  });
+}
+
+/** POST /api/todos/{id}/status — change le statut (pending/done/cancelled). */
+export function setTodoStatus(id: string, status: TodoStatus): Promise<Todo> {
+  return getJson<Todo>(`/api/todos/${encodeURIComponent(id)}/status`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ status }),
+  });
+}
+
+/** DELETE /api/todos/{id} — supprime un élément d'agenda. */
+export function deleteTodo(id: string): Promise<{ id: string }> {
+  return getJson<{ id: string }>(`/api/todos/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Accept: "application/json" },
+  });
 }

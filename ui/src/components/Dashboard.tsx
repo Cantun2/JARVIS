@@ -6,14 +6,29 @@ interface Props {
   events: SeqEvent[];
   agents: Agent[];
   health: Health | null;
+  /** Ouvrir le chat avec un agent conversationnel (clic sur l'arc). */
+  onOpenChat?: ((agent: string) => void) | undefined;
+  /** Lancer un agent de tâche (clic sur l'arc). */
+  onRunAgent?: ((name: string) => void | Promise<void>) | undefined;
 }
 
 /** Layout HUD principal : arc d'agents + flux live (en-tête géré par App). */
-export default function Dashboard({ events, agents, health }: Props): JSX.Element {
+export default function Dashboard({
+  events,
+  agents,
+  health,
+  onOpenChat,
+  onRunAgent,
+}: Props): JSX.Element {
   return (
     <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
       <div className="flex min-h-0 flex-col gap-4 lg:col-span-1">
-        <AgentStatusArc agents={agents} events={events} />
+        <AgentStatusArc
+          agents={agents}
+          events={events}
+          onOpenChat={onOpenChat}
+          onRunAgent={onRunAgent}
+        />
         <SummaryPanel agents={agents} events={events} health={health} />
       </div>
       <div className="flex min-h-0 lg:col-span-2">

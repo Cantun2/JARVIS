@@ -23,6 +23,12 @@ vi.mock("../lib/api", () => ({
   runNight: vi.fn(),
   createProject: vi.fn(),
   runAgent: vi.fn().mockResolvedValue({ correlation_id: "c", status: "ok", output: {} }),
+  getTodos: vi.fn().mockResolvedValue([]),
+  getTodosMonth: vi.fn().mockResolvedValue([]),
+  createTodo: vi.fn(),
+  updateTodo: vi.fn(),
+  setTodoStatus: vi.fn(),
+  deleteTodo: vi.fn(),
 }));
 
 describe("App — navigation par onglets", () => {
@@ -59,5 +65,14 @@ describe("App — navigation par onglets", () => {
 
     expect(screen.getByTestId("tab-mission")).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("mission-panel")).toBeInTheDocument();
+  });
+
+  it("cliquer l'onglet Agenda affiche le TodoPanel", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByTestId("tab-todo"));
+
+    expect(screen.getByTestId("tab-todo")).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("todo-panel")).toBeInTheDocument();
   });
 });

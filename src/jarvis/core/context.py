@@ -16,13 +16,17 @@ from jarvis.core.errors import BudgetExceeded, PermissionDenied
 from jarvis.core.events import EventType
 
 if TYPE_CHECKING:  # imports uniquement pour le typage — pas de couplage runtime du Core
+    from jarvis.chat.store import ConversationStore
     from jarvis.desktop.controller import DesktopController
     from jarvis.inference.gateway import InferenceGateway
+    from jarvis.io.files import FileReader
     from jarvis.io.mail import MailSource
     from jarvis.io.telegram import TelegramNotifier
     from jarvis.io.voice import VoiceIO
+    from jarvis.io.websearch import WebSearch
     from jarvis.mail.store import MailMemory
     from jarvis.night.store import TaskStore
+    from jarvis.todo.store import TodoStore
 
 EmitFn = Callable[[EventType, dict[str, Any]], Awaitable[int]]
 TriggerFn = Callable[[str, AgentInput], Awaitable[AgentOutput]]
@@ -63,8 +67,12 @@ class AgentContext:
     telegram: TelegramNotifier | None = None
     mail: MailSource | None = None
     voice: VoiceIO | None = None
+    web: WebSearch | None = None
+    files: FileReader | None = None
     tasks: TaskStore | None = None  # service d'état (non gaté par permission)
     mail_memory: MailMemory | None = None  # état local (drafts + règles apprises), non gaté
+    conversations: ConversationStore | None = None  # mémoire de dialogue, non gatée
+    todos: TodoStore | None = None  # agenda (tâches + RDV datés), non gaté
     trigger_fn: TriggerFn | None = None
 
     async def emit(self, type: EventType, **payload: Any) -> int:
@@ -96,6 +104,16 @@ class AgentContext:
             raise PermissionDenied(f"{self.agent_name}: VOICE_IO non accordée")
         return self.voice
 
+    def require_web(self) -> WebSearch:
+        if self.web is None:
+            raise PermissionDenied(f"{self.agent_name}: NET_WEB non accordée")
+        return self.web
+
+    def require_files(self) -> FileReader:
+        if self.files is None:
+            raise PermissionDenied(f"{self.agent_name}: FS_PROJECT_DIRS non accordée")
+        return self.files
+
     def require_mail_memory(self) -> MailMemory:
         if self.mail_memory is None:
             raise RuntimeError(f"{self.agent_name}: mémoire mail indisponible")
@@ -105,6 +123,16 @@ class AgentContext:
         if self.tasks is None:
             raise RuntimeError(f"{self.agent_name}: store de tâches indisponible")
         return self.tasks
+
+    def require_conversations(self) -> ConversationStore:
+        if self.conversations is None:
+            raise RuntimeError(f"{self.agent_name}: mémoire de conversation indisponible")
+        return self.conversations
+
+    def require_todos(self) -> TodoStore:
+        if self.todos is None:
+            raise RuntimeError(f"{self.agent_name}: agenda indisponible")
+        return self.todos
 
     async def trigger(self, name: str, data: AgentInput) -> AgentOutput:
         """Déclenche un autre agent (ex. ATLAS → HERMES) via l'orchestrateur."""

@@ -7,6 +7,7 @@ import type {
   SeqEvent,
   Task,
   TaskStatus,
+  Todo,
 } from "../lib/types";
 
 export function makeEvent(overrides: Partial<SeqEvent> = {}): SeqEvent {
@@ -31,6 +32,7 @@ export function makeAgent(overrides: Partial<Agent> = {}): Agent {
     enabled: true,
     status,
     last_run: null,
+    conversational: false,
     ...overrides,
   };
 }
@@ -160,6 +162,57 @@ export function makeDraft(overrides: Partial<import("../lib/types").Draft> = {})
     created_ts: "2026-07-01T08:00:00.000Z",
     ...overrides,
   };
+}
+
+/** Fabrique un événement `chat.message` (conversation multi-tours). */
+export function makeChatMessage(
+  payload: {
+    conversationId: string;
+    agent?: string;
+    role?: "user" | "assistant";
+    text?: string;
+  },
+  overrides: Partial<SeqEvent> = {},
+): SeqEvent {
+  return makeEvent({
+    type: "chat.message",
+    source: payload.agent ?? "JARVIS",
+    payload: {
+      conversation_id: payload.conversationId,
+      agent: payload.agent ?? "JARVIS",
+      role: payload.role ?? "assistant",
+      text: payload.text ?? "",
+    },
+    ...overrides,
+  });
+}
+
+/** Fabrique un élément d'agenda (miroir de TodoDTO). */
+export function makeTodo(overrides: Partial<Todo> = {}): Todo {
+  return {
+    id: "todo-1",
+    kind: "task",
+    title: "Acheter du café",
+    date: "2026-07-08",
+    time: null,
+    notes: "",
+    status: "pending",
+    remind_lead_min: 0,
+    reminded_ts: null,
+    tags: [],
+    proposal: "",
+    updated_ts: "2026-07-08T09:00:00.000Z",
+    ...overrides,
+  };
+}
+
+/** Fabrique un événement d'agenda (todo.created / reminder.due / …). */
+export function makeTodoEvent(
+  type: string,
+  payload: Record<string, unknown>,
+  seq = 0,
+): SeqEvent {
+  return makeEvent({ type, source: "CHRONOS", payload, seq });
 }
 
 /** Fabrique un événement `briefing.ready` (sections optionnelles). */
