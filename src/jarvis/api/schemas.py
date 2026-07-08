@@ -29,6 +29,7 @@ class AgentDTO(BaseModel):
     mode: str
     permissions: list[str]
     enabled: bool
+    conversational: bool = False  # True → clic ouvre le chat ; False → clic lance l'agent
     status: str  # idle | started | finished | failed | escalated
     last_run: LastRunDTO | None = None
 
@@ -84,6 +85,39 @@ class DraftDTO(BaseModel):
 
 class ReclassifyRequest(BaseModel):
     category: Literal["urgent", "action", "info", "newsletter", "spam"]
+
+
+class ChatRequest(BaseModel):
+    agent: str
+    message: str
+    conversation_id: str | None = None
+    project: str | None = None
+
+
+class ChatReplyDTO(BaseModel):
+    conversation_id: str
+    agent: str
+    reply: str
+    turns: int
+
+
+class ChatMessageDTO(BaseModel):
+    role: str
+    text: str
+    created_ts: str
+
+
+class ChatHistoryDTO(BaseModel):
+    conversation_id: str
+    agent: str
+    messages: list[ChatMessageDTO]
+
+
+class ConversationDTO(BaseModel):
+    id: str
+    agent: str
+    title: str
+    updated_ts: str
 
 
 class EchoRequest(BaseModel):
@@ -155,3 +189,42 @@ class CreateProjectResponse(BaseModel):
 
 class TransitionRequest(BaseModel):
     action: Literal["approve", "reject", "retry"]
+
+
+class TodoDTO(BaseModel):
+    id: str
+    kind: str
+    title: str
+    date: str
+    time: str | None
+    notes: str
+    status: str
+    remind_lead_min: int
+    reminded_ts: str | None
+    tags: list[str]
+    proposal: str
+    updated_ts: str
+
+
+class CreateTodoRequest(BaseModel):
+    title: str
+    date: str
+    kind: Literal["task", "appointment"] = "task"
+    time: str | None = None
+    notes: str = ""
+    remind_lead_min: int = 0
+    tags: list[str] = []
+
+
+class UpdateTodoRequest(BaseModel):
+    title: str | None = None
+    date: str | None = None
+    time: str | None = None
+    notes: str | None = None
+    kind: Literal["task", "appointment"] | None = None
+    remind_lead_min: int | None = None
+    tags: list[str] | None = None
+
+
+class TodoStatusRequest(BaseModel):
+    status: Literal["pending", "done", "cancelled"]

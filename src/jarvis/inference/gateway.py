@@ -36,9 +36,19 @@ class InferenceBackend(Protocol):
 class InferenceGateway:
     """Point d'entrée des agents pour l'inférence."""
 
-    def __init__(self, backend: InferenceBackend, router: ComplexityRouter | None = None) -> None:
+    def __init__(
+        self,
+        backend: InferenceBackend,
+        router: ComplexityRouter | None = None,
+        *,
+        tier_models: dict[str, str] | None = None,
+    ) -> None:
         self._backend = backend
         self._router = router or ComplexityRouter()
+        # Modèle par tier résolu (ex. {"local": "qwen2.5:3b", "cloud": "qwen2.5:7b"}).
+        # Sert à faire tourner les agents experts (tier "cloud") sur un modèle plus grand
+        # sans clé cloud : le même backend Ollama sert les deux modèles.
+        self._tier_models = tier_models or {}
 
     @property
     def backend_name(self) -> str:
@@ -61,7 +71,12 @@ class InferenceGateway:
             tier=tier,
         )
         # Fige le tier résolu par le routeur (auto → local|cloud).
-        return req.model_copy(update={"tier": self._router.route(req)})
+        resolved = self._router.route(req)
+        update: dict[str, object] = {"tier": resolved}
+        # Si l'agent n'a pas forcé de modèle, choisir celui du tier résolu (le cas échéant).
+        if model is None and resolved in self._tier_models:
+            update["model"] = self._tier_models[resolved]
+        return req.model_copy(update=update)
 
     async def complete(
         self,

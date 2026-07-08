@@ -1,4 +1,4 @@
-export type TabId = "dashboard" | "chat" | "inbox" | "briefing" | "mission";
+export type TabId = "dashboard" | "chat" | "inbox" | "briefing" | "todo" | "mission";
 
 interface Props {
   active: TabId;
@@ -10,6 +10,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "chat", label: "Chat JARVIS" },
   { id: "inbox", label: "Inbox" },
   { id: "briefing", label: "Briefing" },
+  { id: "todo", label: "Agenda" },
   { id: "mission", label: "Mission Control" },
 ];
 

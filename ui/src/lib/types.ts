@@ -23,6 +23,12 @@ export type EventType =
   | "voice.spoke"
   | "mail.drafted"
   | "mail.reclassified"
+  | "chat.message"
+  | "todo.created"
+  | "todo.updated"
+  | "reminder.due"
+  | "appointment.upcoming"
+  | "agent.proposal"
   | "notification";
 
 /** Événement immuable diffusé sur le bus / REST / WebSocket. */
@@ -67,6 +73,8 @@ export interface Agent {
   enabled: boolean;
   status: AgentStatus;
   last_run: AgentLastRun | null;
+  /** True si l'agent tient une conversation multi-tours (POST /api/chat). */
+  conversational: boolean;
 }
 
 /** GET /api/health */
@@ -204,4 +212,87 @@ export interface InboxItemDTO {
 export interface InboxResponse {
   items: InboxItemDTO[];
   counts: Record<string, number>;
+}
+
+// --- Chat multi-tours (agents conversationnels) ------------------------------
+// Miroir TS du contrat de câble POST /api/chat + GET /api/chat/{id} + /api/conversations.
+
+/** Un message d'une conversation (historique REST). */
+export interface ChatMsg {
+  role: string;
+  text: string;
+  created_ts: string;
+}
+
+/** POST /api/chat -> réponse de l'agent conversationnel. */
+export interface ChatReply {
+  conversation_id: string;
+  agent: string;
+  reply: string;
+  turns: number;
+}
+
+/** GET /api/chat/{conversation_id} -> historique complet d'une conversation. */
+export interface ChatHistory {
+  conversation_id: string;
+  agent: string;
+  messages: ChatMsg[];
+}
+
+/** GET /api/conversations?agent=NAME -> liste des conversations d'un agent. */
+export interface Conversation {
+  id: string;
+  agent: string;
+  title: string;
+  updated_ts: string;
+}
+
+// --- Agenda (todos / rendez-vous / rappels) ----------------------------------
+// Miroir TS du contrat de câble CHRONOS (TodoDTO).
+
+/** Nature d'un élément d'agenda. */
+export type TodoKind = "task" | "appointment";
+
+/** Statut d'un élément d'agenda. */
+export type TodoStatus = "pending" | "done" | "cancelled";
+
+/** Élément d'agenda : tâche ou rendez-vous (miroir de TodoDTO). */
+export interface Todo {
+  id: string;
+  kind: TodoKind;
+  title: string;
+  /** Date au format YYYY-MM-DD (heure locale). */
+  date: string;
+  /** Heure HH:MM ou null si non planifié. */
+  time: string | null;
+  notes: string;
+  status: TodoStatus;
+  remind_lead_min: number;
+  reminded_ts: string | null;
+  tags: string[];
+  /** Suggestion écrite par CHRONOS (vide si aucune). */
+  proposal: string;
+  updated_ts: string;
+}
+
+/** Corps POST /api/todos. */
+export interface CreateTodo {
+  title: string;
+  date: string;
+  kind?: TodoKind;
+  time?: string;
+  notes?: string;
+  remind_lead_min?: number;
+  tags?: string[];
+}
+
+/** Corps PATCH /api/todos/{id} (champs partiels). */
+export interface UpdateTodo {
+  title?: string;
+  date?: string;
+  time?: string | null;
+  notes?: string;
+  kind?: TodoKind;
+  remind_lead_min?: number;
+  tags?: string[];
 }

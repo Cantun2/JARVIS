@@ -1,33 +1,80 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { sayToEcho } from "../lib/api";
-import { selectChat, type ChatMessage } from "../lib/chat";
-import type { SeqEvent } from "../lib/types";
+import { getChatHistory, postChat } from "../lib/api";
+import { selectChatMessages, type ConversationMessage } from "../lib/conversation";
+import type { Agent, ChatMsg, SeqEvent } from "../lib/types";
 
 interface Props {
   events: SeqEvent[];
+  agents: Agent[];
+  /** Agent sélectionné en externe (clic sur l'arc). Défaut : JARVIS. */
+  agent?: string;
 }
 
 /**
- * Chat JARVIS : façade d'ECHO. Le fil de conversation est dérivé des événements
- * voix (`voice.heard`/`voice.spoke`) — les nouvelles réponses arrivent via le
- * WebSocket. On tape une commande ; le bouton micro est un jalon (STT réel à venir).
+ * Chat multi-tours avec un agent conversationnel. On choisit à QUI parler
+ * (agents où `conversational === true`) ; le fil vivant est dérivé des
+ * événements `chat.message` (WebSocket) une fois la conversation identifiée.
+ * Avant la première réponse on affiche une bulle optimiste + un indicateur de
+ * saisie. Le bouton micro est un jalon (STT réel à venir).
  */
-export default function ChatPanel({ events }: Props): JSX.Element {
-  const messages = selectChat(events);
+export default function ChatPanel({ events, agents, agent }: Props): JSX.Element {
+  const [activeAgent, setActiveAgent] = useState(agent ?? "JARVIS");
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [backlog, setBacklog] = useState<ChatMsg[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
 
+  const chatable = agents.filter((a) => a.conversational);
+
+  // L'agent externe (clic sur l'arc) prime : on bascule la cible et on repart
+  // d'une conversation neuve.
+  useEffect(() => {
+    setActiveAgent(agent ?? "JARVIS");
+    setConversationId(null);
+    setBacklog([]);
+    setPending(null);
+    setError(null);
+  }, [agent]);
+
+  // Une fois la conversation identifiée, on amorce le backlog via REST (utile
+  // pour les historiques longs au-delà de la fenêtre WS). Best-effort.
+  useEffect(() => {
+    if (!conversationId) return;
+    let cancelled = false;
+    getChatHistory(conversationId)
+      .then((h) => {
+        if (!cancelled) setBacklog(h.messages);
+      })
+      .catch(() => {
+        /* backlog best-effort : le fil vivant suffit */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId]);
+
+  function switchAgent(name: string): void {
+    if (name === activeAgent) return;
+    setActiveAgent(name);
+    setConversationId(null);
+    setBacklog([]);
+    setPending(null);
+    setError(null);
+    setText("");
+  }
+
   async function send(): Promise<void> {
-    const utterance = text.trim();
-    if (!utterance || sending) return;
+    const message = text.trim();
+    if (!message || sending) return;
     setSending(true);
     setError(null);
-    setPending(utterance);
+    setPending(message);
     try {
-      await sayToEcho(utterance);
+      const reply = await postChat(activeAgent, message, conversationId ?? undefined);
+      setConversationId(reply.conversation_id);
       setText("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Échec de l'envoi");
@@ -37,6 +84,26 @@ export default function ChatPanel({ events }: Props): JSX.Element {
     }
   }
 
+  // Fil affiché : on préfère le transcript vivant (WS) ; on retombe sur le
+  // backlog REST seulement s'il contient davantage de messages.
+  const live: ConversationMessage[] = conversationId
+    ? selectChatMessages(events, conversationId)
+    : [];
+  const backlogMsgs: ConversationMessage[] = backlog.map((m, i) => ({
+    id: `hist-${i}`,
+    role: m.role,
+    text: m.text,
+  }));
+  const history = backlogMsgs.length > live.length ? backlogMsgs : live;
+
+  // Bulle optimiste : le message que l'on vient d'envoyer, tant que son écho WS
+  // n'est pas encore arrivé.
+  const lastUser = [...history].reverse().find((m) => m.role === "user")?.text;
+  const showPending = pending !== null && lastUser !== pending;
+  const view: ConversationMessage[] = showPending
+    ? [...history, { id: "pending", role: "user", text: pending }]
+    : history;
+
   return (
     <section
       className="hud-panel flex min-h-0 flex-col"
@@ -44,11 +111,40 @@ export default function ChatPanel({ events }: Props): JSX.Element {
       data-testid="chat-panel"
     >
       <header className="flex items-center justify-between gap-2 border-b border-hud-border px-3 py-2">
-        <h2 className="hud-label">Chat JARVIS</h2>
-        <span className="text-[10px] text-hud-muted">
-          Dis « Jarvis, … » pour lui parler
-        </span>
+        <h2 className="hud-label">
+          Chat <span className="text-hud-cyan">{activeAgent}</span>
+        </h2>
+        <span className="text-[10px] text-hud-muted">Conversation multi-tours</span>
       </header>
+
+      {chatable.length > 0 && (
+        <div
+          className="flex flex-wrap items-center gap-1.5 border-b border-hud-border px-3 py-2"
+          data-testid="chat-agents"
+          role="group"
+          aria-label="Choisir l'agent"
+        >
+          {chatable.map((a) => {
+            const selected = a.name === activeAgent;
+            return (
+              <button
+                key={a.name}
+                type="button"
+                onClick={() => switchAgent(a.name)}
+                aria-pressed={selected}
+                data-testid={`chat-agent-${a.name}`}
+                className={`hud-label rounded-md border px-2 py-1 transition ${
+                  selected
+                    ? "border-hud-cyan/50 bg-hud-cyan/10 text-hud-cyan"
+                    : "border-transparent text-hud-muted hover:text-hud-text"
+                }`}
+              >
+                {a.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {error && (
         <div className="border-b border-hud-red/30 px-3 py-1.5 text-[11px] text-hud-red" role="alert">
@@ -56,12 +152,12 @@ export default function ChatPanel({ events }: Props): JSX.Element {
         </div>
       )}
 
-      {messages.length === 0 ? (
+      {view.length === 0 && !sending ? (
         <div
           className="flex flex-1 items-center justify-center p-6 text-center text-xs text-hud-muted"
           data-testid="chat-empty"
         >
-          Aucune conversation — essaie « Jarvis, fais-moi le briefing »
+          Aucune conversation — écris à {activeAgent} pour commencer
         </div>
       ) : (
         <ul
@@ -69,7 +165,7 @@ export default function ChatPanel({ events }: Props): JSX.Element {
           data-testid="chat-log"
         >
           <AnimatePresence initial={false}>
-            {messages.map((m) => (
+            {view.map((m) => (
               <motion.li
                 key={m.id}
                 initial={{ opacity: 0, y: 6 }}
@@ -80,6 +176,15 @@ export default function ChatPanel({ events }: Props): JSX.Element {
               </motion.li>
             ))}
           </AnimatePresence>
+          {sending && (
+            <li>
+              <div className="flex justify-start" data-testid="chat-typing">
+                <div className="rounded-lg border border-hud-border bg-white/[0.02] px-3 py-1.5 text-xs text-hud-muted">
+                  {activeAgent} écrit…
+                </div>
+              </div>
+            </li>
+          )}
         </ul>
       )}
 
@@ -104,7 +209,7 @@ export default function ChatPanel({ events }: Props): JSX.Element {
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={pending ?? "Jarvis, …"}
+          placeholder={pending ?? `Écris à ${activeAgent}…`}
           className="min-w-0 flex-1 rounded border border-hud-border bg-transparent px-2 py-1 text-xs text-hud-text placeholder:text-hud-muted focus:border-hud-cyan/50 focus:outline-none"
           data-testid="chat-input"
         />
@@ -121,7 +226,7 @@ export default function ChatPanel({ events }: Props): JSX.Element {
   );
 }
 
-function ChatBubble({ message }: { message: ChatMessage }): JSX.Element {
+function ChatBubble({ message }: { message: ConversationMessage }): JSX.Element {
   const isUser = message.role === "user";
   return (
     <div
@@ -137,16 +242,6 @@ function ChatBubble({ message }: { message: ChatMessage }): JSX.Element {
         }`}
       >
         <p className="leading-relaxed">{message.text}</p>
-        {!isUser && (message.routedTo || message.spoke) && (
-          <div className="mt-1 flex items-center gap-2 text-[10px] text-hud-muted">
-            {message.routedTo && (
-              <span className="rounded border border-hud-amber/40 px-1 text-hud-amber" data-testid="chat-routed">
-                → {message.routedTo}
-              </span>
-            )}
-            {message.spoke && <span data-testid="chat-spoken">🔊 parlé</span>}
-          </div>
-        )}
       </div>
     </div>
   );

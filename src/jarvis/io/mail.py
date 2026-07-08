@@ -113,7 +113,7 @@ class GmailMailSource:
 
         if not self._token_path:
             raise RuntimeError("GMAIL_TOKEN_PATH manquant (cf. docs/MANUAL_SETUP.md)")
-        creds = Credentials.from_authorized_user_file(
+        creds = Credentials.from_authorized_user_file(  # type: ignore[no-untyped-call]
             self._token_path, ["https://www.googleapis.com/auth/gmail.readonly"]
         )
         if not creds.valid and creds.refresh_token:

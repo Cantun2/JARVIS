@@ -7,7 +7,9 @@ import ChatPanel from "./components/ChatPanel";
 import InboxPanel from "./components/InboxPanel";
 import BriefingPanel from "./components/BriefingPanel";
 import MissionControl from "./components/MissionControl";
+import TodoPanel from "./components/TodoPanel";
 import TabBar, { type TabId } from "./components/TabBar";
+import { runAgent } from "./lib/api";
 import { useEventStream } from "./lib/ws";
 
 /**
@@ -19,6 +21,14 @@ import { useEventStream } from "./lib/ws";
 export default function App(): JSX.Element {
   const { events, agents, health, connected } = useEventStream("");
   const [tab, setTab] = useState<TabId>("dashboard");
+  const [chatAgent, setChatAgent] = useState<string>("JARVIS");
+
+  /** Lance un agent de tâche depuis l'arc (erreurs avalées : best-effort UI). */
+  function handleRunAgent(name: string): Promise<void> {
+    return runAgent(name)
+      .then(() => undefined)
+      .catch(() => undefined);
+  }
 
   return (
     <main className="flex h-full flex-col gap-4 p-4 md:p-6">
@@ -43,11 +53,23 @@ export default function App(): JSX.Element {
 
       <div className="flex min-h-0 flex-1 flex-col">
         {tab === "dashboard" && (
-          <Dashboard events={events} agents={agents} health={health} />
+          <Dashboard
+            events={events}
+            agents={agents}
+            health={health}
+            onOpenChat={(a) => {
+              setChatAgent(a);
+              setTab("chat");
+            }}
+            onRunAgent={handleRunAgent}
+          />
         )}
-        {tab === "chat" && <ChatPanel events={events} />}
+        {tab === "chat" && (
+          <ChatPanel events={events} agents={agents} agent={chatAgent} />
+        )}
         {tab === "inbox" && <InboxPanel events={events} />}
         {tab === "briefing" && <BriefingPanel events={events} />}
+        {tab === "todo" && <TodoPanel events={events} />}
         {tab === "mission" && <MissionControl events={events} />}
       </div>
     </main>

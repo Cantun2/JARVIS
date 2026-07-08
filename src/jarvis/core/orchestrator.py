@@ -43,8 +43,12 @@ class AgentRunner:
         telegram: Any | None = None,
         mail: Any | None = None,
         voice: Any | None = None,
+        web: Any | None = None,
+        files: Any | None = None,
         tasks: Any | None = None,
         mail_memory: Any | None = None,
+        conversations: Any | None = None,
+        todos: Any | None = None,
     ) -> None:
         self.bus = bus
         self.enforcer = enforcer
@@ -54,8 +58,12 @@ class AgentRunner:
         self.telegram = telegram
         self.mail = mail
         self.voice = voice
+        self.web = web
+        self.files = files
         self.tasks = tasks
         self.mail_memory = mail_memory
+        self.conversations = conversations
+        self.todos = todos
 
     async def run_by_name(self, name: str, data: AgentInput) -> AgentOutput:
         return await self.run(self.registry.get(name), data)
@@ -102,8 +110,12 @@ class AgentRunner:
             telegram=self.telegram if Permission.NOTIFY_TELEGRAM in granted else None,
             mail=self.mail if Permission.MAIL_READ in granted else None,
             voice=self.voice if Permission.VOICE_IO in granted else None,
+            web=self.web if Permission.NET_WEB in granted else None,
+            files=self.files if Permission.FS_PROJECT_DIRS in granted else None,
             tasks=self.tasks,
             mail_memory=self.mail_memory,
+            conversations=self.conversations,
+            todos=self.todos,
             trigger_fn=self.run_by_name,
         )
 
